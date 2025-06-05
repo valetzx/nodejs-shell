@@ -9,14 +9,19 @@ const axios = require("axios");
 const app = express();
 const PORT = 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
-const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://example.com/down"; // 远程文件列表的 URL
+const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down"; // 远程文件列表的 URL
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
-const DOWNLOAD_FOLDER = "./"; // 下载文件的目录
+const DOWNLOAD_FOLDER = "./"; 
+const SUIDB_FOLDER = "./db"; // 下载文件的目录
 const COMMAND_HISTORY = "command.json";
 
 // 确保日志文件夹和下载文件夹存在
 if (!fs.existsSync(LOGS_FOLDER)) {
   fs.mkdirSync(LOGS_FOLDER);
+}
+
+if (!fs.existsSync(SUIDB_FOLDER)) {
+  fs.mkdirSync(SUIDB_FOLDER);
 }
 
 // 启动时自动从网络下载文件
