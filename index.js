@@ -26,15 +26,15 @@ app.use(
 );
 
 app.use(
-  "/sub",
+  "/ray",
   createProxyMiddleware({
-    target: "http://localhost:2096",
+    target: "http://localhost:2098",
     changeOrigin: true,
   }),
 );
 
 // 获取服务器 IPv4 和 IPv6 地址
-app.get("/start/ip", (req, res) => {
+app.get("/run/ip", (req, res) => {
   const networkInterfaces = os.networkInterfaces();
 
   const ipAddresses = Object.values(networkInterfaces)
@@ -50,16 +50,16 @@ app.get("/start/ip", (req, res) => {
 });
 
 // 预定义命令执行
-app.get("/start/:command", (req, res) => {
+app.get("/run/:command", (req, res) => {
   const cmdParam = req.params.command;
   let shellCommand = "";
 
   if (cmdParam === "ls") {
     shellCommand = "ls -a";
   } else if (cmdParam === "name") {
-    shellCommand = "uname";
+    shellCommand = "uname -a";
   } else {
-    return res.status(400).send('无效命令，请使用 "ls" 或 "name"。');
+    return res.status(400).send('无效命令');
   }
 
   spawn(shellCommand, { shell: true }).stdout.on("data", (data) => {
