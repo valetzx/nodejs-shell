@@ -112,6 +112,15 @@ app.use(
   }),
 );
 
+app.use(
+  "/ws", // 可以根据你的路径来调整
+  createProxyMiddleware({
+    target: "wss://0.0.0.0:11012", // 目标 WebSocket 地址
+    changeOrigin: true,
+    ws: true, // 允许 WebSocket 请求
+  })
+);
+
 // 获取服务器 IPv4 和 IPv6 地址
 app.get("/run/ip", (req, res) => {
   const networkInterfaces = os.networkInterfaces();
