@@ -79,7 +79,8 @@ app.get("/file", (req, res) => {
         <a href="/file?folder=${path.join(folder, sub)}">📁 ${sub}</a>
         <form action="/rmdir" method="post" style="display:inline;margin-left:10px">
           <input type="hidden" name="target" value="${path.join(folder, sub)}" />
-          <button type="submit" onclick="return confirm('确定要删除该文件夹吗？')">🗑 删除</button>
+          <input type="password" name="password" placeholder="密码" required />
+          <button type="submit" onclick="return confirm('确定要删除该文件夹吗？')">删除</button>
         </form>
       </li>
     `).join("");
@@ -88,6 +89,7 @@ app.get("/file", (req, res) => {
       <html>
         <body>
           <h2>文件上传与文件夹查看</h2>
+
           <h3>上传文件</h3>
           <form action="/file" method="post" enctype="multipart/form-data">
             <label for="password">上传密码：</label>
@@ -98,17 +100,23 @@ app.get("/file", (req, res) => {
             <br><br>
             <input type="submit" value="上传" />
           </form>
+
           <h3>新建文件夹</h3>
           <form action="/mkdir" method="post">
             <label for="dirname">文件夹名称：</label>
             <input type="text" id="dirname" name="dirname" required />
             <input type="hidden" name="parent" value="${folder}" />
+            <label for="password">密码：</label>
+            <input type="password" id="password" name="password" required />
             <input type="submit" value="新建文件夹" />
           </form>
+
           <h3>当前路径：${folder || '/'} </h3>
           ${folder ? `<a href="/file?folder=${parentPath}">⬅ 返回上一级</a>` : ""}
+
           <h4>子文件夹</h4>
           <ul>${folderList}</ul>
+
           <h4>文件</h4>
           <ul>${fileList}</ul>
         </body>
@@ -117,44 +125,11 @@ app.get("/file", (req, res) => {
   });
 });
 
-app.post("/file", upload.single("file"), (req, res) => {
-  const { password, folder = "" } = req.body;
-  if (password !== UPLOAD_PASSWORD) return res.status(403).send("密码错误，上传失败！");
-  if (!req.file) return res.status(400).send("没有文件上传！");
-  console.log(`文件已上传: ${req.file.originalname}`);
-  res.redirect(`/file?folder=${folder}`);
-});
-
-app.get("/files/*", (req, res) => {
-  const relPath = req.params[0];
-  const filePath = path.join(DOWNLOAD_FOLDER, relPath);
-  fs.access(filePath, fs.constants.F_OK, (err) => {
-    if (err) return res.status(404).send("文件不存在");
-    res.download(filePath, path.basename(filePath), (err) => {
-      if (err) {
-        console.error("下载文件时出错:", err);
-        res.status(500).send("文件下载失败");
-      }
-    });
-  });
-});
-
-app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
-  const { dirname, parent = "" } = req.body;
-  if (!dirname) return res.status(400).send("未提供文件夹名称");
-  const newPath = path.join(DOWNLOAD_FOLDER, parent, dirname);
-  if (fs.existsSync(newPath)) return res.status(400).send("文件夹已存在");
-  try {
-    fs.mkdirSync(newPath);
-    res.redirect(`/file?folder=${parent}`);
-  } catch (error) {
-    res.status(500).send(`无法创建文件夹：${error.message}`);
-  }
-});
-
+// 删除目录路由，验证密码
 app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
-  const target = req.body.target;
+  const { target, password } = req.body;
   if (!target) return res.status(400).send("未指定目录");
+  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
   const fullPath = path.join(DOWNLOAD_FOLDER, target);
   if (!fs.existsSync(fullPath)) return res.status(404).send("目录不存在");
   try {
@@ -163,6 +138,21 @@ app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
     res.redirect(`/file?folder=${parent}`);
   } catch (error) {
     res.status(500).send(`无法删除目录：${error.message}`);
+  }
+});
+
+// 创建子目录支持，验证密码
+app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
+  const { dirname, parent = "", password } = req.body;
+  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
+  if (!dirname) return res.status(400).send("未提供文件夹名称");
+  const newPath = path.join(DOWNLOAD_FOLDER, parent, dirname);
+  if (fs.existsSync(newPath)) return res.status(400).send("文件夹已存在");
+  try {
+    fs.mkdirSync(newPath);
+    res.redirect(`/file?folder=${parent}`);
+  } catch (error) {
+    res.status(500).send(`无法创建文件夹：${error.message}`);
   }
 });
 
