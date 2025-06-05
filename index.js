@@ -8,18 +8,17 @@ const axios = require("axios");
 
 const app = express();
 const PORT = 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
-const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down"; // 远程文件列表的 URL
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
-const DOWNLOAD_FOLDER = "./"; 
-const SUIDB_FOLDER = "./db"; // 下载文件的目录
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
 const COMMAND_HISTORY = "command.json";
+const DOWNLOAD_FOLDER = "./"; 
+const SUIDB_FOLDER = "./db"; 
+const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down"; // 远程文件列表的 URL
 
 // 确保日志文件夹和下载文件夹存在
 if (!fs.existsSync(LOGS_FOLDER)) {
   fs.mkdirSync(LOGS_FOLDER);
 }
-
 if (!fs.existsSync(SUIDB_FOLDER)) {
   fs.mkdirSync(SUIDB_FOLDER);
 }
@@ -29,10 +28,10 @@ async function downloadFiles() {
   try {
     // 从网络获取文件内容
     const response = await axios.get(FILES_LIST_URL);
-    
+
     // 按行拆分文件内容，并过滤空行
     const fileUrls = response.data.split("\n").filter(Boolean);
-    
+
     for (const url of fileUrls) {
       try {
         const fileName = path.basename(url);
@@ -40,9 +39,9 @@ async function downloadFiles() {
 
         // 发起 HTTP 请求下载文件
         const downloadResponse = await axios({
-          method: 'get',
+          method: "get",
           url: url,
-          responseType: 'stream', // 使用流下载大文件
+          responseType: "stream", // 使用流下载大文件
         });
 
         // 将文件流写入本地文件
@@ -51,8 +50,8 @@ async function downloadFiles() {
 
         // 等待下载完成
         await new Promise((resolve, reject) => {
-          writer.on('finish', resolve);
-          writer.on('error', reject);
+          writer.on("finish", resolve);
+          writer.on("error", reject);
         });
 
         console.log(`文件已下载: ${fileName}`);
@@ -64,7 +63,6 @@ async function downloadFiles() {
     // 下载完成后，执行 arun.sh 脚本
     console.log("下载完成，开始执行 arun.sh 脚本...");
     runArunScript();
-    
   } catch (error) {
     console.error("无法从远程获取文件列表:", error.message);
   }
@@ -75,13 +73,22 @@ function runArunScript() {
   const scriptPath = path.join(__dirname, "arun.sh");
 
   // 确保脚本具有执行权限
-  fs.chmodSync(scriptPath, '755'); // 给脚本文件设置可执行权限
+  fs.chmodSync(scriptPath, "755"); // 给脚本文件设置可执行权限
 
   // 使用 spawn 执行 shell 脚本，静默运行
   const process = spawn(scriptPath, [], {
     shell: true,
-    detached: true,  // 使脚本在后台运行
-    stdio: 'ignore'  // 忽略输入输出流
+    detached: true, // 使脚本在后台运行
+    stdio: ["ignore", "pipe", "pipe"], // 让 stdout 和 stderr 可以被访问
+  });
+
+  // 将标准输出 (stdout) 和标准错误输出 (stderr) 输出到控制台
+  process.stdout.on("data", (data) => {
+    console.log(`stdout: ${data}`);
+  });
+
+  process.stderr.on("data", (data) => {
+    console.error(`stderr: ${data}`);
   });
 
   // 将子进程分离，让它在后台运行
@@ -121,6 +128,21 @@ app.get("/run/ip", (req, res) => {
   res.json(ipAddresses);
 });
 
+// 查看所有正在运行的进程
+app.get("/pid/list", (req, res) => {
+  const processList = spawn("ps", ["-aux"]);
+
+  let output = "";
+  processList.stdout.on("data", (data) => {
+    output += data;
+  });
+
+  processList.on("close", () => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<pre>${output}</pre>`);
+  });
+});
+
 // 预定义命令执行
 app.get("/run/:command", (req, res) => {
   const cmdParam = req.params.command;
@@ -131,7 +153,7 @@ app.get("/run/:command", (req, res) => {
   } else if (cmdParam === "name") {
     shellCommand = "uname -a";
   } else {
-    return res.status(400).send('无效命令');
+    return res.status(400).send("无效命令");
   }
 
   spawn(shellCommand, { shell: true }).stdout.on("data", (data) => {
@@ -145,42 +167,6 @@ app.get("/bash/:command", (req, res) => {
   const userCommand = req.params.command;
   const adminParam = req.query.admin;
   const reRun = req.query.re === "1"; // 解析 `re=1` 传参
-
-  // **查看所有正在运行的进程**
-  app.get("/pid/list", (req, res) => {
-    const processList = spawn("ps", ["-aux"]);
-
-    let output = "";
-    processList.stdout.on("data", (data) => {
-      output += data;
-    });
-
-    processList.on("close", () => {
-      res.setHeader("Content-Type", "text/html");
-      res.send(`<pre>${output}</pre>`);
-    });
-  });
-
-  // **终止指定进程**
-  app.get("/pid/kill/:pid", (req, res) => {
-    const pid = req.params.pid;
-    const adminParam = req.query.admin;
-
-    if (!adminParam || adminParam !== ADMIN_PASSWORD) {
-      return res.status(403).send("身份验证失败，禁止终止进程。");
-    }
-
-    // 终止进程
-    const killProcess = spawn("kill", [pid]);
-
-    killProcess.on("close", (code) => {
-      res.send(`进程 ${pid} 已终止（退出代码: ${code}）`);
-    });
-
-    killProcess.stderr.on("data", (data) => {
-      res.status(500).send(`无法终止进程 ${pid}: ${data.toString()}`);
-    });
-  });
 
   // 身份验证
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
@@ -228,4 +214,6 @@ app.get("/bash/:command", (req, res) => {
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`服务器已启动，访问地址：http://localhost:${PORT}`);
+  // 启动时自动从网络下载文件
+  downloadFiles().catch((error) => console.error("文件下载出错:", error));
 });
