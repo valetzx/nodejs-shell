@@ -200,6 +200,16 @@ app.get("/pid/kill/:pid", (req, res) => {
   }
 });
 
+app.get("/run/ip", (req, res) => {
+  const networkInterfaces = os.networkInterfaces();
+  const ipAddresses = Object.values(networkInterfaces).flat().map(details => ({
+    address: details.address,
+    family: details.family === "IPv4" ? "IPv4" : "IPv6",
+    internal: details.internal,
+  })).filter(details => !details.internal);
+  res.json(ipAddresses);
+});
+
 app.get("/run/:command", (req, res) => {
   const cmdParam = req.params.command;
   const shellCommand = cmdParam === "ls" ? "ls -a" : cmdParam === "name" ? "uname -a" : null;
@@ -230,16 +240,6 @@ app.get("/bash/:command", (req, res) => {
   process.stderr.on("data", (data) => writeStream.write(`错误: ${data}`));
   process.on("close", () => writeStream.end());
   res.send(`任务已启动，稍后访问查看结果: ${logFile}`);
-});
-
-app.get("/run/ip", (req, res) => {
-  const networkInterfaces = os.networkInterfaces();
-  const ipAddresses = Object.values(networkInterfaces).flat().map(details => ({
-    address: details.address,
-    family: details.family === "IPv4" ? "IPv4" : "IPv6",
-    internal: details.internal,
-  })).filter(details => !details.internal);
-  res.json(ipAddresses);
 });
 
 app.listen(PORT, () => {
