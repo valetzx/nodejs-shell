@@ -79,8 +79,9 @@ app.get("/file", (req, res) => {
         <a href="/file?folder=${path.join(folder, sub)}">📁 ${sub}</a>
         <form action="/rmdir" method="post" style="display:inline;margin-left:10px">
           <input type="hidden" name="target" value="${path.join(folder, sub)}" />
-          <input type="password" name="password" placeholder="密码" required />
-          <button type="submit" onclick="return confirm('确定要删除该文件夹吗？')">删除</button>
+          <input type="hidden" name="folder" value="${folder}" />
+          <input type="hidden" id="shared-password" name="password" />
+          <button type="submit" onclick="return withPassword(this.form, '确定要删除该文件夹吗？')">🗑 删除</button>
         </form>
       </li>
     `).join("");
@@ -90,24 +91,36 @@ app.get("/file", (req, res) => {
         <body>
           <h2>文件上传与文件夹查看</h2>
 
+          <script>
+            function withPassword(form, message) {
+              const pwd = document.getElementById('unipass').value;
+              if (!pwd) {
+                alert('请输入统一密码');
+                return false;
+              }
+              if (message && !confirm(message)) return false;
+              const inputs = form.querySelectorAll('input[name=password]');
+              inputs.forEach(input => input.value = pwd);
+              return true;
+            }
+          </script>
+
+          <label for="unipass">统一密码：</label>
+          <input type="password" id="unipass" /><br><br>
+
           <h3>上传文件</h3>
-          <form action="/file" method="post" enctype="multipart/form-data">
-            <label for="password">上传密码：</label>
-            <input type="password" id="password" name="password" required />
+          <form action="/file" method="post" enctype="multipart/form-data" onsubmit="return withPassword(this)">
             <input type="hidden" name="folder" value="${folder}" />
-            <br><br>
+            <input type="hidden" id="shared-password" name="password" />
             <input type="file" name="file" required />
-            <br><br>
             <input type="submit" value="上传" />
           </form>
 
           <h3>新建文件夹</h3>
-          <form action="/mkdir" method="post">
-            <label for="dirname">文件夹名称：</label>
-            <input type="text" id="dirname" name="dirname" required />
+          <form action="/mkdir" method="post" onsubmit="return withPassword(this)">
+            <input type="text" id="dirname" name="dirname" required placeholder="文件夹名称" />
             <input type="hidden" name="parent" value="${folder}" />
-            <label for="password">密码：</label>
-            <input type="password" id="password" name="password" required />
+            <input type="hidden" id="shared-password" name="password" />
             <input type="submit" value="新建文件夹" />
           </form>
 
@@ -125,22 +138,6 @@ app.get("/file", (req, res) => {
   });
 });
 
-// 删除目录路由，验证密码
-app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
-  const { target, password } = req.body;
-  if (!target) return res.status(400).send("未指定目录");
-  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
-  const fullPath = path.join(DOWNLOAD_FOLDER, target);
-  if (!fs.existsSync(fullPath)) return res.status(404).send("目录不存在");
-  try {
-    fs.rmSync(fullPath, { recursive: true, force: true });
-    const parent = target.split("/").slice(0, -1).join("/");
-    res.redirect(`/file?folder=${parent}`);
-  } catch (error) {
-    res.status(500).send(`无法删除目录：${error.message}`);
-  }
-});
-
 // 创建子目录支持，验证密码
 app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
   const { dirname, parent = "", password } = req.body;
@@ -154,6 +151,31 @@ app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
   } catch (error) {
     res.status(500).send(`无法创建文件夹：${error.message}`);
   }
+});
+
+// 删除目录路由，验证密码
+app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
+  const { target, password, folder } = req.body;
+  if (!target) return res.status(400).send("未指定目录");
+  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
+  const fullPath = path.join(DOWNLOAD_FOLDER, target);
+  if (!fs.existsSync(fullPath)) return res.status(404).send("目录不存在");
+  try {
+    fs.rmSync(fullPath, { recursive: true, force: true });
+    const parent = folder || target.split("/").slice(0, -1).join("/");
+    res.redirect(`/file?folder=${parent}`);
+  } catch (error) {
+    res.status(500).send(`无法删除目录：${error.message}`);
+  }
+});
+
+// 上传文件处理，验证密码
+app.post("/file", upload.single("file"), (req, res) => {
+  const { password, folder = "" } = req.body;
+  if (password !== UPLOAD_PASSWORD) return res.status(403).send("密码错误，上传失败！");
+  if (!req.file) return res.status(400).send("没有文件上传！");
+  console.log(`文件已上传: ${req.file.originalname}`);
+  res.redirect(`/file?folder=${folder}`);
 });
 
 app.get("/pid/list", (req, res) => {
