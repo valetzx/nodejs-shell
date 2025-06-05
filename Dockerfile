@@ -1,4 +1,4 @@
-FROM node:lts-alpine3.22
+FROM node:lts-alpine
 WORKDIR /app
 ENV TOKEN pig
 RUN apk add  --no-cache --update ca-certificates tzdata
