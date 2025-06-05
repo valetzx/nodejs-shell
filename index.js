@@ -4,17 +4,64 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
+const axios = require("axios");
 
 const app = express();
 const PORT = 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
+const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://example.com/down"; // 远程文件列表的 URL
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "default_password"; // 在环境变量中修改你的密码
+const DOWNLOAD_FOLDER = "./"; // 下载文件的目录
 const COMMAND_HISTORY = "command.json";
 
-// 确保日志文件夹存在
+// 确保日志文件夹和下载文件夹存在
 if (!fs.existsSync(LOGS_FOLDER)) {
   fs.mkdirSync(LOGS_FOLDER);
 }
+
+// 启动时自动从网络下载文件
+async function downloadFiles() {
+  try {
+    // 从网络获取文件内容
+    const response = await axios.get(FILES_LIST_URL);
+    
+    // 按行拆分文件内容，并过滤空行
+    const fileUrls = response.data.split("\n").filter(Boolean);
+    
+    for (const url of fileUrls) {
+      try {
+        const fileName = path.basename(url);
+        const filePath = path.join(DOWNLOAD_FOLDER, fileName);
+
+        // 发起 HTTP 请求下载文件
+        const downloadResponse = await axios({
+          method: 'get',
+          url: url,
+          responseType: 'stream', // 使用流下载大文件
+        });
+
+        // 将文件流写入本地文件
+        const writer = fs.createWriteStream(filePath);
+        downloadResponse.data.pipe(writer);
+
+        // 等待下载完成
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+
+        console.log(`文件已下载: ${fileName}`);
+      } catch (error) {
+        console.error(`下载文件失败: ${url}`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error("无法从远程获取文件列表:", error.message);
+  }
+}
+
+// 启动时自动下载文件
+downloadFiles().catch((error) => console.error("文件下载出错:", error));
 
 // 反向代理 /user -> localhost:5000
 app.use(
