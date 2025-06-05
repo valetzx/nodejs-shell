@@ -75,40 +75,40 @@ app.get("/bash/:command", (req, res) => {
   const reRun = req.query.re === "1"; // 解析 `re=1` 传参
 
   // **查看所有正在运行的进程**
-app.get("/p/list", (req, res) => {
-  const processList = spawn("ps", ["-aux"]);
+  app.get("/p/list", (req, res) => {
+    const processList = spawn("ps", ["-aux"]);
 
-  let output = "";
-  processList.stdout.on("data", (data) => {
-    output += data;
-  });
+    let output = "";
+    processList.stdout.on("data", (data) => {
+      output += data;
+    });
 
-  processList.on("close", () => {
-    res.setHeader("Content-Type", "text/html");
-    res.send(`<pre>${output}</pre>`);
+    processList.on("close", () => {
+      res.setHeader("Content-Type", "text/html");
+      res.send(`<pre>${output}</pre>`);
+    });
   });
-});
 
   // **终止指定进程**
-app.get("/p/kill/:pid", (req, res) => {
-  const pid = req.params.pid;
-  const adminParam = req.query.admin;
+  app.get("/p/kill/:pid", (req, res) => {
+    const pid = req.params.pid;
+    const adminParam = req.query.admin;
 
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
-    return res.status(403).send("身份验证失败，禁止终止进程。");
-  }
+    if (!adminParam || adminParam !== ADMIN_PASSWORD) {
+      return res.status(403).send("身份验证失败，禁止终止进程。");
+    }
 
     // 终止进程
-  const killProcess = spawn("kill", [pid]);
+    const killProcess = spawn("kill", [pid]);
 
-  killProcess.on("close", (code) => {
-    res.send(`进程 ${pid} 已终止（退出代码: ${code}）`);
-  });
+    killProcess.on("close", (code) => {
+      res.send(`进程 ${pid} 已终止（退出代码: ${code}）`);
+    });
 
-  killProcess.stderr.on("data", (data) => {
-    res.status(500).send(`无法终止进程 ${pid}: ${data.toString()}`);
+    killProcess.stderr.on("data", (data) => {
+      res.status(500).send(`无法终止进程 ${pid}: ${data.toString()}`);
+    });
   });
-});
 
   // 身份验证
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
