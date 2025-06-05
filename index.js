@@ -75,7 +75,7 @@ app.get("/bash/:command", (req, res) => {
   const reRun = req.query.re === "1"; // 解析 `re=1` 传参
 
   // **查看所有正在运行的进程**
-  app.get("/p/list", (req, res) => {
+  app.get("/pid/list", (req, res) => {
     const processList = spawn("ps", ["-aux"]);
 
     let output = "";
@@ -90,7 +90,7 @@ app.get("/bash/:command", (req, res) => {
   });
 
   // **终止指定进程**
-  app.get("/p/kill/:pid", (req, res) => {
+  app.get("/pid/kill/:pid", (req, res) => {
     const pid = req.params.pid;
     const adminParam = req.query.admin;
 
