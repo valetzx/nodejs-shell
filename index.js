@@ -18,11 +18,18 @@ if (!fs.existsSync(LOGS_FOLDER)) {
 
 // 反向代理 /user -> localhost:5000
 app.use(
-  "/user",
+  "/app",
   createProxyMiddleware({
-    target: "http://localhost:5000",
+    target: "http://localhost:2095",
     changeOrigin: true,
-    pathRewrite: { "^/user": "" },
+  }),
+);
+
+app.use(
+  "/sub",
+  createProxyMiddleware({
+    target: "http://localhost:2096",
+    changeOrigin: true,
   }),
 );
 
