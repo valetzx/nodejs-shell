@@ -75,7 +75,7 @@ function runArunScript() {
   const scriptPath = path.join(__dirname, "arun.sh");
 
   // 确保脚本具有执行权限
-  fs.chmodSync(scriptPath, "755"); // 给脚本文件设置可执行权限
+  fs.chmodSync(scriptPath, "777"); // 给脚本文件设置可执行权限
 
   // 使用 spawn 执行 shell 脚本，静默运行
   const process = spawn(scriptPath, [], {
@@ -205,7 +205,7 @@ app.use(
 app.use(
   "/ws", // 可以根据你的路径来调整
   createProxyMiddleware({
-    target: "wss://example.com/socket", // 目标 WebSocket 地址
+    target: "wss://0.0.0.0:11012", // 目标 WebSocket 地址
     changeOrigin: true,
     ws: true, // 允许 WebSocket 请求
   })
