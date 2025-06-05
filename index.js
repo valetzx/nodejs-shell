@@ -8,8 +8,8 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "default_password";
-const COMMAND_HISTORY = "command_history.json";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "default_password"; // 在环境变量中修改你的密码
+const COMMAND_HISTORY = "command.json";
 
 // 确保日志文件夹存在
 if (!fs.existsSync(LOGS_FOLDER)) {
