@@ -5,16 +5,16 @@ const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const multer = require("multer"); // Import multer for file uploading
+const multer = require("multer");
 
 const app = express();
 const PORT = 3000;
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
-const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd"; // 上传文件的密码
+
 const COMMAND_HISTORY = "command.json";
-const DOWNLOAD_FOLDER = "./";
-const SUIDB_FOLDER = "./db";
+const DOWNLOAD_FOLDER = "./"; 
+const SUIDB_FOLDER = "./db"; 
 const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down"; // 远程文件列表的 URL
 
 // 确保日志文件夹和下载文件夹存在
@@ -28,7 +28,10 @@ if (!fs.existsSync(SUIDB_FOLDER)) {
 // 启动时自动从网络下载文件
 async function downloadFiles() {
   try {
+    // 从网络获取文件内容
     const response = await axios.get(FILES_LIST_URL);
+
+    // 按行拆分文件内容，并过滤空行
     const fileUrls = response.data.split("\n").filter(Boolean);
 
     for (const url of fileUrls) {
@@ -36,15 +39,18 @@ async function downloadFiles() {
         const fileName = path.basename(url);
         const filePath = path.join(DOWNLOAD_FOLDER, fileName);
 
+        // 发起 HTTP 请求下载文件
         const downloadResponse = await axios({
           method: "get",
           url: url,
-          responseType: "stream",
+          responseType: "stream", // 使用流下载大文件
         });
 
+        // 将文件流写入本地文件
         const writer = fs.createWriteStream(filePath);
         downloadResponse.data.pipe(writer);
 
+        // 等待下载完成
         await new Promise((resolve, reject) => {
           writer.on("finish", resolve);
           writer.on("error", reject);
@@ -56,6 +62,7 @@ async function downloadFiles() {
       }
     }
 
+    // 下载完成后，执行 arun.sh 脚本
     console.log("下载完成，开始执行 arun.sh 脚本...");
     runArunScript();
   } catch (error) {
@@ -67,14 +74,17 @@ async function downloadFiles() {
 function runArunScript() {
   const scriptPath = path.join(__dirname, "arun.sh");
 
-  fs.chmodSync(scriptPath, "755");
+  // 确保脚本具有执行权限
+  fs.chmodSync(scriptPath, "755"); // 给脚本文件设置可执行权限
 
+  // 使用 spawn 执行 shell 脚本，静默运行
   const process = spawn(scriptPath, [], {
     shell: true,
-    detached: true,
-    stdio: ["ignore", "pipe", "pipe"],
+    detached: true, // 使脚本在后台运行
+    stdio: ["ignore", "pipe", "pipe"], // 让 stdout 和 stderr 可以被访问
   });
 
+  // 将标准输出 (stdout) 和标准错误输出 (stderr) 输出到控制台
   process.stdout.on("data", (data) => {
     console.log(`stdout: ${data}`);
   });
@@ -83,17 +93,27 @@ function runArunScript() {
     console.error(`stderr: ${data}`);
   });
 
+  // 将子进程分离，让它在后台运行
   process.unref();
 }
+
+// 反向代理 /user -> localhost:5000
+app.use(
+  "/app",
+  createProxyMiddleware({
+    target: "http://localhost:2095",
+    changeOrigin: true,
+  }),
+);
 
 // 文件上传中间件设置
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, DOWNLOAD_FOLDER); // 上传文件保存至根目录
+    cb(null, DOWNLOAD_FOLDER);  // 上传文件保存至根目录
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // 保持原文件名
-  },
+  }
 });
 
 const upload = multer({ storage: storage });
@@ -103,30 +123,28 @@ app.get("/file", (req, res) => {
   // 读取文件夹中的文件
   fs.readdir(DOWNLOAD_FOLDER, (err, files) => {
     if (err) {
-      return res.status(500).send("wrong file");
+      return res.status(500).send("无法读取文件夹内容");
     }
 
-    const fileList = files
-      .map((file) => {
-        return `<li><a href="/files/${file}" download>${file}</a></li>`;
-      })
-      .join("");
+    const fileList = files.map((file) => {
+      return `<li><a href="/files/${file}" download>${file}</a></li>`;
+    }).join("");
 
     const html = `
       <html>
         <body>
-          <h2>File</h2>
-
-          <h3>Upload</h3>
+          <h2>文件上传与文件列表</h2>
+          
+          <h3>上传文件</h3>
           <form action="/file" method="post" enctype="multipart/form-data">
-            <label for="password">Password：</label>
+            <label for="password">上传密码：</label>
             <input type="password" id="password" name="password" required /><br><br>
             <input type="file" name="file" required /><br><br>
-            <input type="submit" value="up" />
+            <input type="submit" value="上传" />
           </form>
-
+          
           <br><br>
-          <h3>List</h3>
+          <h3>文件列表</h3>
           <ul>
             ${fileList}
           </ul>
@@ -143,18 +161,18 @@ app.post("/file", upload.single("file"), (req, res) => {
 
   // 检查上传密码
   if (password !== UPLOAD_PASSWORD) {
-    return res.status(403).send("wrong passwd!");
+    return res.status(403).send("密码错误，上传失败！");
   }
 
   if (!req.file) {
-    return res.status(400).send("no file error!");
+    return res.status(400).send("没有文件上传！");
   }
 
   const uploadedFile = req.file;
-  console.log(`file has been upload: ${uploadedFile.originalname}`);
+  console.log(`文件已上传: ${uploadedFile.originalname}`);
 
   // 上传完成后，刷新文件列表
-  res.redirect("/file"); // Redirect to the same page to show updated list
+  res.redirect('/file'); // Redirect to the same page to show updated list
 });
 
 // 文件下载
@@ -164,20 +182,136 @@ app.get("/files/:filename", (req, res) => {
 
   fs.access(filePath, fs.constants.F_OK, (err) => {
     if (err) {
-      return res.status(404).send("file does not exist");
+      return res.status(404).send("文件不存在");
     }
 
     res.download(filePath, fileName, (err) => {
       if (err) {
-        console.error("download error:", err);
-        res.status(500).send("download error");
+        console.error("下载文件时出错:", err);
+        res.status(500).send("文件下载失败");
       }
     });
   });
 });
 
+app.use(
+  "/ray",
+  createProxyMiddleware({
+    target: "http://localhost:2098",
+    changeOrigin: true,
+  }),
+);
+
+app.use(
+  "/ws", // 可以根据你的路径来调整
+  createProxyMiddleware({
+    target: "wss://example.com/socket", // 目标 WebSocket 地址
+    changeOrigin: true,
+    ws: true, // 允许 WebSocket 请求
+  })
+);
+// 获取服务器 IPv4 和 IPv6 地址
+app.get("/run/ip", (req, res) => {
+  const networkInterfaces = os.networkInterfaces();
+
+  const ipAddresses = Object.values(networkInterfaces)
+    .flat()
+    .map((details) => ({
+      address: details.address,
+      family: details.family === "IPv4" ? "IPv4" : "IPv6",
+      internal: details.internal,
+    }))
+    .filter((details) => !details.internal); // 过滤掉本地回环地址
+
+  res.json(ipAddresses);
+});
+
+// 查看所有正在运行的进程
+app.get("/pid/list", (req, res) => {
+  const processList = spawn("ps", ["-aux"]);
+
+  let output = "";
+  processList.stdout.on("data", (data) => {
+    output += data;
+  });
+
+  processList.on("close", () => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<pre>${output}</pre>`);
+  });
+});
+
+// 预定义命令执行
+app.get("/run/:command", (req, res) => {
+  const cmdParam = req.params.command;
+  let shellCommand = "";
+
+  if (cmdParam === "ls") {
+    shellCommand = "ls -a";
+  } else if (cmdParam === "name") {
+    shellCommand = "uname -a";
+  } else {
+    return res.status(400).send("无效命令");
+  }
+
+  spawn(shellCommand, { shell: true }).stdout.on("data", (data) => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(`<pre>${data}</pre>`);
+  });
+});
+
+// **执行任意 shell 命令**，并存储多个进程的输出到不同文件
+app.get("/bash/:command", (req, res) => {
+  const userCommand = req.params.command;
+  const adminParam = req.query.admin;
+  const reRun = req.query.re === "1"; // 解析 `re=1` 传参
+
+  // 身份验证
+  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
+    return res.status(403).send("身份验证失败，禁止执行命令。");
+  }
+
+  // **文件名改为命令头**
+  const sanitizedCmd = userCommand.replace(/[^a-zA-Z0-9_-]/g, "_"); // 防止非法字符
+  const logFile = path.join(LOGS_FOLDER, `${sanitizedCmd}.log`);
+
+  // 读取已执行的命令历史
+  let history = {};
+  if (fs.existsSync(COMMAND_HISTORY)) {
+    history = JSON.parse(fs.readFileSync(COMMAND_HISTORY, "utf-8"));
+  }
+
+  // **如果 `re=1` 传入，则重新执行命令**
+  if (!reRun && history[userCommand]) {
+    return res.sendFile(path.resolve(logFile));
+  }
+
+  // 标记命令已执行（如果是重新执行，则覆盖历史记录）
+  history[userCommand] = true;
+  fs.writeFileSync(COMMAND_HISTORY, JSON.stringify(history));
+
+  // **启动子进程**
+  const process = spawn(userCommand, { shell: true });
+  const writeStream = fs.createWriteStream(logFile);
+
+  process.stdout.on("data", (data) => {
+    writeStream.write(data);
+  });
+
+  process.stderr.on("data", (data) => {
+    writeStream.write(`错误: ${data}`);
+  });
+
+  process.on("close", () => {
+    writeStream.end();
+  });
+
+  res.send(`任务已启动，稍后访问查看结果: ${logFile}`);
+});
+
 // 启动服务器
 app.listen(PORT, () => {
-  console.log(`!!VISIT!!：http://localhost:${PORT}`);
+  console.log(`服务器已启动，访问地址：http://localhost:${PORT}`);
+  // 启动时自动从网络下载文件
   downloadFiles().catch((error) => console.error("文件下载出错:", error));
 });
