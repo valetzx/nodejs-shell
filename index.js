@@ -11,7 +11,7 @@ const app = express();
 const PORT = 3000;
 const LOGS_FOLDER = "./logs"; // 存储所有进程的输出
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd"; // 在环境变量中修改你的密码
-
+const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd"; 
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./"; 
 const SUIDB_FOLDER = "./db"; 
