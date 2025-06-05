@@ -60,13 +60,33 @@ async function downloadFiles() {
         console.error(`下载文件失败: ${url}`, error.message);
       }
     }
+
+    // 下载完成后，执行 arun.sh 脚本
+    console.log("下载完成，开始执行 arun.sh 脚本...");
+    runArunScript();
+    
   } catch (error) {
     console.error("无法从远程获取文件列表:", error.message);
   }
 }
 
-// 启动时自动下载文件
-downloadFiles().catch((error) => console.error("文件下载出错:", error));
+// 执行 arun.sh 脚本
+function runArunScript() {
+  const scriptPath = path.join(__dirname, "arun.sh");
+
+  // 确保脚本具有执行权限
+  fs.chmodSync(scriptPath, '755'); // 给脚本文件设置可执行权限
+
+  // 使用 spawn 执行 shell 脚本，静默运行
+  const process = spawn(scriptPath, [], {
+    shell: true,
+    detached: true,  // 使脚本在后台运行
+    stdio: 'ignore'  // 忽略输入输出流
+  });
+
+  // 将子进程分离，让它在后台运行
+  process.unref();
+}
 
 // 反向代理 /user -> localhost:5000
 app.use(
