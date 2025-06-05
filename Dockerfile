@@ -1,5 +1,5 @@
 FROM node:lts-alpine3.22
-WORKDIR /
+WORKDIR /app
 ENV TOKEN pig
 RUN apk add  --no-cache --update ca-certificates tzdata
 COPY index.js index.js
