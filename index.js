@@ -82,7 +82,7 @@ app.get("/file", (req, res) => {
           <input type="hidden" name="target" value="${path.join(folder, sub)}" />
           <input type="hidden" name="folder" value="${folder}" />
           <input type="hidden" id="shared-password" name="password" />
-          <button type="submit" onclick="return withPassword(this.form, '确定要删除该文件夹吗？')">🗑 删除</button>
+          <button type="submit" onclick="return withPassword(this.form, '确定要删除该文件夹吗？')">删除</button>
         </form>
       </li>
     `).join("");
