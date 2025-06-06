@@ -53,6 +53,9 @@ function runArunScript() {
 }
 
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
+app.use("/jan2022", createProxyMiddleware({ target: "http://0.0.0.0:2022", changeOrigin: true, ws: true, secure: false }));
+app.use("/ss2023", createProxyMiddleware({ target: "http://0.0.0.0:2023", changeOrigin: true, ws: true, secure: false }));
+app.use("/tr2025", createProxyMiddleware({ target: "http://0.0.0.0:2025", changeOrigin: true, ws: true, secure: false }));
 //app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
 app.use("/app", createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true, ws: true }));
