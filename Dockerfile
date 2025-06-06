@@ -1,7 +1,7 @@
 FROM node:lts-alpine3.21
 WORKDIR /app
 ENV TOKEN pig
-RUN apk add  --no-cache --update ca-certificates tzdata
+RUN apk add  --no-cache --update ca-certificates tzdata && apk add --no-cache --update ca-certificates gcompat
 COPY index.js index.js
 COPY panel.html panel.html
 COPY package.json package.json
