@@ -52,20 +52,10 @@ function runArunScript() {
   process.unref();
 }
 
+app.use("/ray", createProxyMiddleware({ target: "http://localhost:2098", changeOrigin: true, ws: true }));
+//app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
 app.use("/app", createProxyMiddleware({ target: "http://localhost:2095", changeOrigin: true, ws: true }));
-app.use("/ray", createProxyMiddleware({
-  target: "http://localhost:2098",
-  changeOrigin: true,
-  ws: true,
-  onError: (err, req, res) => {
-    console.error("[Proxy] 错误:", err.message);
-    if (!res.headersSent) res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end("代理连接失败");
-  }
-}));
-
-app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, DOWNLOAD_FOLDER),
