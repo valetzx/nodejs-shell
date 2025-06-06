@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>综合管理面板</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+        height: 100vh;
+      }
+      .panel {
+        width: 48%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: horizontal;
+        overflow: auto;
+      }
+      #output {
+        white-space: pre-wrap;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .cmd-entry {
+        margin-bottom: 10px;
+      }
+      /* 让文件列表区更好显示 */
+      .file-list ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      .file-list li {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 左侧 Bash 面板 -->
+    <div class="panel">
+      <h2>Bash 面板</h2>
+      <div class="cmd-entry">
+        <label for="admin">管理员密码：</label>
+        <input type="password" id="admin" />
+      </div>
+      <div class="cmd-entry">
+        <label><input type="checkbox" id="reFlag" /> 启用 re=1</label>
+      </div>
+      <div class="cmd-entry">
+        <label for="cmd">命令：</label>
+        <input type="text" id="cmd" placeholder="输入如 ls、pwd 等命令" />
+        <button onclick="runCommand()">发送</button>
+      </div>
+      <div id="output"></div>
+    </div>
+
+    <!-- 右侧文件上传功能 -->
+    <div class="panel file-list">
+      <div id="file-list">
+        <!-- 文件列表将在此处显示 -->
+      </div>
+    </div>
+
+    <script>
+      // 执行 Bash 命令并显示结果
+      function runCommand() {
+        const admin = document.getElementById("admin").value.trim();
+        const re = document.getElementById("reFlag").checked ? "&re=1" : "";
+        let command = document.getElementById("cmd").value.trim();
+        if (!command) return alert("请输入命令");
+        command = encodeURIComponent("date && " + command);
+
+        fetch(`/bash/${command}?admin=${admin}${re}`)
+          .then((res) => res.text())
+          .then((data) => {
+            const output = document.getElementById("output");
+            output.innerHTML += `\n[${new Date().toLocaleString()}] 执行结果:\n${data}\n\n`;
+            output.scrollTop = output.scrollHeight;
+          })
+          .catch((err) => alert("请求失败: " + err));
+      }
+
+      // 文件上传表单密码验证
+      function withPassword(form) {
+        const pwd = document.getElementById("unipass").value;
+        if (!pwd) {
+          alert("请输入统一密码");
+          return false;
+        }
+        const inputs = form.querySelectorAll("input[name=password]");
+        inputs.forEach((input) => (input.value = pwd));
+        return true;
+      }
+
+      // 获取并显示文件列表
+      function fetchFileList() {
+        fetch("/file?folder=") // 默认读取根目录，可以修改为动态路径
+          .then((res) => res.text())
+          .then((data) => {
+            document.getElementById("file-list").innerHTML = data;
+          })
+          .catch((err) => {
+            document.getElementById("file-list").innerHTML =
+              "无法加载文件列表：" + err;
+          });
+      }
+
+      // 页面加载时获取文件列表
+      window.onload = fetchFileList;
+    </script>
+  </body>
+</html>
