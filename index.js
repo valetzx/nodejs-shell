@@ -243,7 +243,7 @@ app.get("/bash/:command", (req, res) => {
   res.send(`任务已启动，稍后访问查看结果: ${logFile}`);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0') => {
   console.log(`服务器已启动，访问地址：http://localhost:${PORT}`);
   downloadFiles().catch((error) => console.error("文件下载出错:", error));
 });
