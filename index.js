@@ -96,7 +96,7 @@ app.get("/file", (req, res) => {
             function withPassword(form, message) {
               const pwd = document.getElementById('unipass').value;
               if (!pwd) {
-                alert('请输入统一密码');
+                alert('请输入管理员密码');
                 return false;
               }
               if (message && !confirm(message)) return false;
@@ -106,7 +106,7 @@ app.get("/file", (req, res) => {
             }
           </script>
 
-          <label for="unipass">统一密码：</label>
+          <label for="unipass">管理员密码：</label>
           <input type="password" id="unipass" /><br><br>
 
           <h3>上传文件</h3>
