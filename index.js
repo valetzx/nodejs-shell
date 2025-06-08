@@ -59,7 +59,7 @@ function runArunScript() {
 /* ------------------------------------------------------------------
    WebSocket → TCP 多路复用（multi-proxy 集成）
 ------------------------------------------------------------------ */
-const LISTEN_PORT = 3000;
+const LISTEN_PORT = 3001;
 const ROUTES = {
   "/vmess":  { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
   "/trojan": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
