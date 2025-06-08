@@ -54,9 +54,9 @@ function runArunScript() {
 
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
 app.use("/jan2022", createProxyMiddleware({ target: "http://[::]:2022", changeOrigin: true, ws: true, secure: false }));
-app.use("/ss2023", createProxyMiddleware({ target: "http://[::]:2023", changeOrigin: true, ws: true, secure: false }));
-app.use("/vm2024", createProxyMiddleware({ target: "http://0.0.0.0:2024", changeOrigin: true, ws: true, secure: false }));
-app.use("/tr2025", createProxyMiddleware({ target: "http://[::]:2025", changeOrigin: true, ws: true, secure: false }));
+app.use("/ss2023", createProxyMiddleware({ target: "https://[::]:2023", changeOrigin: true, ws: true, secure: false }));
+app.use("/vm2024", createProxyMiddleware({ target: "0.0.0.0:2024", changeOrigin: true, ws: true, secure: false }));
+app.use("/tr2025", createProxyMiddleware({ target: "https://[::]:2025", changeOrigin: true, ws: true, secure: false }));
 //app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
