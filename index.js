@@ -58,6 +58,8 @@ app.use("/ss2023", createProxyMiddleware({ target: "http://[::]:2023", changeOri
 app.use("/vm2024", createProxyMiddleware({ target: "http://0.0.0.0:2024", changeOrigin: true, ws: true, secure: false }));
 app.use("/tr2025", createProxyMiddleware({ target: "http://[::]:2025", changeOrigin: true, ws: true, secure: false }));
 //app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
+app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
+app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
 app.use("/app", createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true, ws: true }));
 
