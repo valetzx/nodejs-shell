@@ -74,7 +74,6 @@ app.use("/@@@", (req, res, next) => {
   }
   const useTls = selectedProtocol === "https" || selectedProtocol === "wss";
   const additionalPath = req.path.split("?")[0].replace("/@@@", "");
-
   const dynamicProxy = createProxyMiddleware({
     target: `${selectedProtocol}://127.0.0.1:${targetPort}`, 
     changeOrigin: true,
