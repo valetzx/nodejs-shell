@@ -56,26 +56,31 @@ function runArunScript() {
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
 app.use("/@@@", (req, res, next) => {
   const port = parseInt(req.query.port, 10);
-  const adminParam = req.query.admin.split("/")[0];
-  const protocolParam = req.query.protocol || "http";
+  const adminParam = req.query.admin ? req.query.admin.split("/")[0] : null; // 添加判断，如果 admin 未定义则返回 null
+  const protocolParam = req.query.protocol || "http"; 
   const validProtocols = ["http", "https", "ws", "wss"];
+
   if (!validProtocols.includes(protocolParam)) {
-    return res.status(400).send("无效协议，请选择 http, https, ws, 或 wss");
+    return res.status(400).send("无效协议");
   }
-  const useTls = protocolParam === "https" || protocolParam === "wss"; // 确定是否使用 TLS（https 或 wss）
-  const additionalPath = req.path.split("?")[0].replace("/@@@", "");
+
+  const useTls = protocolParam === "https" || protocolParam === "wss";
+
+  const additionalPath = req.path.split("?")[0].replace("/@@@", ""); 
+
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
     return res.status(403).send("未授权：请提供正确的管理员密码");
   }
+
   if (!port || port < 2000 || (port > 3000 && port !== 11010 && port !== 11011 && port !== 11012)) {
     return res.status(400).send("无效端口");
   }
-  // 设置代理
+
   const dynamicProxy = createProxyMiddleware({
     target: `${protocolParam}://127.0.0.1:${port}`,
     changeOrigin: true,
     ws: true,
-    secure: false, 
+    secure: false,
     pathRewrite: {
       [`^/@@@`]: "",
     },
@@ -83,6 +88,7 @@ app.use("/@@@", (req, res, next) => {
       res.status(502).send(`代理失败: ${err.message}`);
     },
   });
+
   return dynamicProxy(req, res, next);
 });
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
