@@ -1,19 +1,18 @@
 {
-  "name": "pig start",
+  "name": "vmess-ws-proxy",
   "version": "1.0.0",
-  "description": "start app by nodejs",
+  "description": "Pure Node.js reverse proxy: WebSocket → TCP (VMess)",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "debug": "DISABLE_ARUN=1 node index.js"
+    "start": "node index.js"
   },
-  "author": "pig",
-  "license": "ISC",
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=14"
+  },
   "dependencies": {
-    "axios": "^1.4.0",
-    "child_process": "^1.0.2",
-    "express": "^4.18.2",
-    "http-proxy-middleware": "^2.0.6",
-    "multer": "^1.4.5-lts.1"
+    "ws": "^8.18.2"
   }
 }
