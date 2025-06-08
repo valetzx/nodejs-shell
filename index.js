@@ -95,22 +95,6 @@ app.use("/@@@", (req, res, next) => {
   // 处理请求
   return dynamicProxy(req, res, next);
 });
-
-  const dynamicProxy = createProxyMiddleware({
-    target: `${protocolParam}://127.0.0.1:${port}`,
-    changeOrigin: true,
-    ws: true,
-    secure: false,
-    pathRewrite: {
-      [`^/@@@`]: "",
-    },
-    onError(err, req, res) {
-      res.status(502).send(`代理失败: ${err.message}`);
-    },
-  });
-
-  return dynamicProxy(req, res, next);
-});
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 //app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
