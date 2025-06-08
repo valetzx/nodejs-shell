@@ -61,9 +61,9 @@ function runArunScript() {
 ------------------------------------------------------------------ */
 const LISTEN_PORT = 3001;
 const ROUTES = {
-  "/vm2098":  { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
+  "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
   "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
-  "/vl2024":     { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
+  "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
   // 以后可继续扩展，如 "/mysql": { host: "db.internal", port: 3306 }
 };
 
