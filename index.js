@@ -55,26 +55,46 @@ function runArunScript() {
 
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
 app.use("/@@@", (req, res, next) => {
-  const port = parseInt(req.query.port, 10);
-  const adminParam = req.query.admin ? req.query.admin.split("/")[0] : null; // 添加判断，如果 admin 未定义则返回 null
-  const protocolParam = req.query.protocol || "http"; 
-  const validProtocols = ["http", "https", "ws", "wss"];
 
-  if (!validProtocols.includes(protocolParam)) {
+  const { port, admin, protocol } = req.query;
+  const validProtocols = ["http", "https", "ws", "wss"];
+  const targetPort = parseInt(port, 10);
+  const adminParam = admin ? admin.split("/")[0] : null;
+  const selectedProtocol = validProtocols.includes(protocol) ? protocol : "http";
+  if (!validProtocols.includes(selectedProtocol)) {
+    logger.warn(`无效协议请求: ${selectedProtocol}`);
     return res.status(400).send("无效协议");
   }
-
-  const useTls = protocolParam === "https" || protocolParam === "wss";
-
-  const additionalPath = req.path.split("?")[0].replace("/@@@", ""); 
-
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
+    logger.warn(`未授权访问: ${req.ip} 请求的路径 ${req.path}`);
     return res.status(403).send("未授权：请提供正确的管理员密码");
   }
-
-  if (!port || port < 2000 || (port > 3000 && port !== 11010 && port !== 11011 && port !== 11012)) {
+  if (!targetPort || targetPort < 2000 || (targetPort > 3000 && ![11010, 11011, 11012].includes(targetPort))) {
     return res.status(400).send("无效端口");
   }
+  const useTls = selectedProtocol === "https" || selectedProtocol === "wss";
+  const additionalPath = req.path.split("?")[0].replace("/@@@", "");
+
+  const dynamicProxy = createProxyMiddleware({
+    target: `${selectedProtocol}://127.0.0.1:${targetPort}`, 
+    changeOrigin: true,
+    ws: true,
+    secure: false,
+    pathRewrite: {
+      [`^/@@@`]: "",
+    },
+    onError(err, req, res) {
+      logger.error(`代理错误: ${err.message}`);
+      if (res.status) {
+        res.status(502).send(`代理失败: ${err.message}`);
+      } else {
+        console.error("代理错误（WebSocket）:", err);
+      }
+    },
+  });
+  // 处理请求
+  return dynamicProxy(req, res, next);
+});
 
   const dynamicProxy = createProxyMiddleware({
     target: `${protocolParam}://127.0.0.1:${port}`,
