@@ -56,29 +56,27 @@ function runArunScript() {
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
 app.use("/p", (req, res, next) => {
   const port = parseInt(req.query.port, 10);
-  const adminParam = req.query.admin;  // 从 URL 读取 ?admin=xxx
+  const adminParam = req.query.admin;
+  const useTls = req.query.tls === "1";
 
-  console.log("[DEBUG] 收到端口:", port);
-  console.log("[DEBUG] 收到管理员密码:", `"${adminParam}"`);
-
-  const expectedPassword = "passwd";
-
-  if (!adminParam || adminParam.trim() !== expectedPassword) {
+  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
     return res.status(403).send("未授权：请提供正确的管理员密码");
   }
 
-  if (!port || port < 2000 || port > 9999) {
-    return res.status(400).send("无效端口，只允许 2000~9999 范围内");
+  if (!port || port < 2000 || port > 3000) {
+    return res.status(400).send("无效端口");
   }
 
+  const protocol = useTls ? "https" : "http";
+
   const dynamicProxy = createProxyMiddleware({
-    target: `http://127.0.0.1:${port}`,
+    target: `${protocol}://127.0.0.1:${port}`,
     changeOrigin: true,
     ws: true,
-    secure: false,
+    secure: false, 
     onError(err, req, res) {
       res.status(502).send(`代理失败: ${err.message}`);
-    }
+    },
   });
 
   return dynamicProxy(req, res, next);
