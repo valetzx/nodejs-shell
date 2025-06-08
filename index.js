@@ -55,37 +55,34 @@ function runArunScript() {
 
 app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
 app.use("/@@@", (req, res, next) => {
-
   const port = parseInt(req.query.port, 10);
-  const adminParam = req.query.admin.split("/")[0]; 
-  const useTls = req.query.tls === "1"; 
+  const adminParam = req.query.admin.split("/")[0];
+  const protocolParam = req.query.protocol || "http";
+  const validProtocols = ["http", "https", "ws", "wss"];
+  if (!validProtocols.includes(protocolParam)) {
+    return res.status(400).send("无效协议，请选择 http, https, ws, 或 wss");
+  }
+  const useTls = protocolParam === "https" || protocolParam === "wss"; // 确定是否使用 TLS（https 或 wss）
   const additionalPath = req.path.split("?")[0].replace("/@@@", "");
-
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
     return res.status(403).send("未授权：请提供正确的管理员密码");
   }
-
-  if (!port || port < 2000 || port > 3000) {
+  if (!port || port < 2000 || (port > 3000 && port !== 11010 && port !== 11011 && port !== 11012)) {
     return res.status(400).send("无效端口");
   }
-
-  const protocol = useTls ? "https" : "http";
+  // 设置代理
   const dynamicProxy = createProxyMiddleware({
-    target: `${protocol}://127.0.0.1:${port}`, 
+    target: `${protocolParam}://127.0.0.1:${port}`,
     changeOrigin: true,
-    ws: true,
-    secure: false,
+    ws: protocolParam === "ws" || protocolParam === "wss",
+    secure: false, 
     pathRewrite: {
-      [`^/@@@${additionalPath}`]: "",
+      [`^/@@@`]: "",
     },
     onError(err, req, res) {
       res.status(502).send(`代理失败: ${err.message}`);
     },
   });
-
-  return dynamicProxy(req, res, next);
-});
-
   return dynamicProxy(req, res, next);
 });
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
