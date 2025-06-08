@@ -57,12 +57,10 @@ app.use("/jan2022", createProxyMiddleware({ target: "http://[::]:2022", changeOr
 app.use("/ss2023", createProxyMiddleware({ target: "https://0.0.0.0:2023", changeOrigin: true, ws: true, secure: false }));
 app.use("/vm2024", createProxyMiddleware({ target: "https://0.0.0.0:2024", changeOrigin: true, ws: true, secure: false }));
 app.use("/tr2025", createProxyMiddleware({ target: "https://[::]:2025", changeOrigin: true, ws: true, secure: false }));
-//app.use("/ws", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
-app.use("/valadmin", createProxyMiddleware({ target: "http://0.0.0.0:20000", changeOrigin: true, ws: true, secure: false }));
-app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
-app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
+//app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
+//app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
-app.use("/app", createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true, ws: true }));
+app.use("/app", createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true }));
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, DOWNLOAD_FOLDER),
