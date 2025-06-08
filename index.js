@@ -61,7 +61,6 @@ app.use("/p", (req, res, next) => {
   console.log("[DEBUG] 收到端口:", port);
   console.log("[DEBUG] 收到管理员密码:", `"${adminParam}"`);
 
-  // 正确密码
   const expectedPassword = "passwd";
 
   if (!adminParam || adminParam.trim() !== expectedPassword) {
@@ -81,10 +80,6 @@ app.use("/p", (req, res, next) => {
       res.status(502).send(`代理失败: ${err.message}`);
     }
   });
-
-  return dynamicProxy(req, res, next);
-});
-
 
   return dynamicProxy(req, res, next);
 });
