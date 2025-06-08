@@ -1,18 +1,16 @@
 {
   "name": "vmess-ws-proxy",
-  "version": "1.0.0",
-  "description": "Pure Node.js reverse proxy: WebSocket → TCP (VMess)",
+  "version": "1.1.0",
+  "description": "WS multiplexer: /vmess → TCP, /@ → interactive shell",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "",
-  "license": "MIT",
   "private": true,
-  "engines": {
-    "node": ">=14"
-  },
+  "engines": { "node": ">=14" },
+  "license": "MIT",
   "dependencies": {
-    "ws": "^8.18.2"
+    "ws": "^8.18.2",
+    "node-pty": "^1.0.0"
   }
 }
