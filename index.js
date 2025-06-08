@@ -15,10 +15,10 @@ const http = require('http');
 const net  = require('net');
 const { WebSocketServer } = require('ws');
 
-const LISTEN_PORT = 2098;
+const LISTEN_PORT = 3000;
 const WS_PATH     = process.env.WS_PATH     || '/vmess';
 const REMOTE_HOST = process.env.REMOTE_HOST || '127.0.0.1';
-const REMOTE_PORT = Number(process.env.REMOTE_PORT) || 10000;
+const REMOTE_PORT = Number(process.env.REMOTE_PORT) || 2098;
 
 /* ---------- HTTP 回落页面，可自定义 ---------- */
 const server = http.createServer((req, res) => {
