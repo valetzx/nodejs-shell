@@ -12,6 +12,7 @@ const PORT = 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
@@ -280,5 +281,9 @@ app.get("/bash/:command", (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`服务器已启动，访问地址：http://localhost:${PORT}`);
-  downloadFiles().catch((error) => console.error("文件下载出错:", error));
+  if (process.env.DISABLE_ARUN !== "1") {
+    downloadFiles().catch((error) => console.error("文件下载出错:", error));
+  } else {
+    console.log("调试模式下已禁用 arun.sh 执行");
+  }
 });
