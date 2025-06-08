@@ -74,7 +74,7 @@ app.use("/@@@", (req, res, next) => {
   const dynamicProxy = createProxyMiddleware({
     target: `${protocolParam}://127.0.0.1:${port}`,
     changeOrigin: true,
-    ws: protocolParam === "ws" || protocolParam === "wss",
+    ws: true,
     secure: false, 
     pathRewrite: {
       [`^/@@@`]: "",
