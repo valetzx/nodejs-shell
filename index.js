@@ -56,17 +56,20 @@ app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOri
 app.use("/p", (req, res, next) => {
   const port = parseInt(req.query.port, 10);
   const adminParam = req.query.admin;
+  const useTls = req.query.tls === "1"; // 如果 ?tls=1 表示使用 https
 
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
-    return res.status(403).send("未授权：需要管理员密码");
+  if (!adminParam || adminParam !== "ADMIN_PASSWORD") {
+    return res.status(403).send("未授权：请提供正确的管理员密码");
   }
-  // 白名单端口限制
+
   if (!port || port < 2000 || port > 3000) {
     return res.status(400).send("无效端口");
   }
 
+  const protocol = useTls ? "https" : "http";
+
   const dynamicProxy = createProxyMiddleware({
-    target: `http://127.0.0.1:${port}`,
+    target: `${protocol}://127.0.0.1:${port}`,
     changeOrigin: true,
     ws: true,
     secure: false,
@@ -77,7 +80,6 @@ app.use("/p", (req, res, next) => {
 
   return dynamicProxy(req, res, next);
 });
-
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 //app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
