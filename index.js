@@ -59,6 +59,7 @@ function runArunScript() {
 /* ------------------------------------------------------------------
    WebSocket → TCP 多路复用（multi-proxy 集成）
 ------------------------------------------------------------------ */
+
 const LISTEN_PORT = 3001;
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
@@ -85,31 +86,48 @@ wss.on("connection", (ws, req, route) => {
   );
 
   ws.on("message", chunk => upstream.write(chunk));
-  upstream.on("data", chunk => ws.readyState === ws.OPEN && ws.send(chunk));
+  upstream.on("data", chunk => {
+    if (ws.readyState === ws.OPEN) ws.send(chunk);
+  });
 
-  const cleanup = () => { upstream.destroy(); ws.close(); };
-  ws.once("close",  cleanup);
-  ws.once("error",  cleanup);
+  const cleanup = () => {
+    upstream.destroy();
+    ws.close();
+  };
+  ws.once("close", cleanup);
+  ws.once("error", cleanup);
   upstream.once("error", cleanup);
   upstream.once("close", cleanup);
 });
 
 wsTcpServer.on("upgrade", (req, socket, head) => {
-  const route = ROUTES[req.url];
-  if (!route) { socket.destroy(); return; }
-  wss.handleUpgrade(req, socket, head, ws => {
-    wss.emit("connection", ws, req, route);
-  });
+  try {
+    const parsed = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    const route = ROUTES[parsed.pathname];
+    const adminParam = parsed.searchParams.get("admin");
+
+    if (!route || adminParam !== ADMIN_PASSWORD) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, ws => {
+      wss.emit("connection", ws, req, route);
+    });
+  } catch (err) {
+    socket.destroy();
+  }
 });
 
 wsTcpServer.listen(LISTEN_PORT, () => {
-  console.log(
-    `Multiplex WS proxy listening on :${LISTEN_PORT}\nRoutes:\n` +
-    Object.entries(ROUTES)
-      .map(([p, t]) => `  ${p} → ${t.host}:${t.port}`)
-      .join("\n")
+  console.log(`Multiplex WS proxy listening on :${LISTEN_PORT}`);
+  Object.entries(ROUTES).forEach(([p, t]) =>
+    console.log(`  ${p} → ${t.host}:${t.port}`)
   );
 });
+
+/* ------------------------------------------------------------------ */
 /* -------------------- multi-proxy 代码结束 -------------------- */
 
 app.use("/@@@", (req, res, next) => {
