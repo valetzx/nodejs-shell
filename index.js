@@ -58,7 +58,8 @@ app.use("/p", (req, res, next) => {
   const port = parseInt(req.query.port, 10);
   const adminParam = req.query.admin;
   const useTls = req.query.tls === "1";
-
+  const additionalPath = req.path.split('?')[0];
+  
   if (!adminParam || adminParam !== ADMIN_PASSWORD) {
     return res.status(403).send("未授权：请提供正确的管理员密码");
   }
