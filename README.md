@@ -13,3 +13,6 @@
 
 `FILES_LIST_URL` 给一个下载文件路径，每行一个，在index启动时会自动下载文件
 
+pigeonpig/suirps:v3
+
+`hy2::udp::2096` `vmess::ws::2098`
