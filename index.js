@@ -15,7 +15,7 @@ const PORT = 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
@@ -61,9 +61,9 @@ function runArunScript() {
 ------------------------------------------------------------------ */
 const LISTEN_PORT = 3001;
 const ROUTES = {
-  "/vmess":  { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
-  "/trojan": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
-  "/ss":     { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
+  "/vm2098":  { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
+  "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
+  "/vl2024":     { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
   // 以后可继续扩展，如 "/mysql": { host: "db.internal", port: 3306 }
 };
 
