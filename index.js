@@ -127,9 +127,8 @@ wsTcpServer.listen(LISTEN_PORT, () => {
   );
 });
 
-/* ------------------------------------------------------------------ */
 /* -------------------- multi-proxy 代码结束 -------------------- */
-
+/* ------------------------------------------------------------------
 app.use("/@@@", (req, res, next) => {
 
   const { port, admin, protocol } = req.query;
@@ -170,6 +169,7 @@ app.use("/@@@", (req, res, next) => {
   // 处理请求
   return dynamicProxy(req, res, next);
 });
+------------------------------------------------------------------ */
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 //app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
