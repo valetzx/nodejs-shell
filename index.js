@@ -59,8 +59,6 @@ function runArunScript() {
 /* ------------------------------------------------------------------
    WebSocket → TCP 多路复用（multi-proxy 集成）
 ------------------------------------------------------------------ */
-
-const LISTEN_PORT = 3001;
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
   "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
@@ -120,8 +118,8 @@ wsTcpServer.on("upgrade", (req, socket, head) => {
   }
 });
 
-wsTcpServer.listen(LISTEN_PORT, () => {
-  console.log(`Multiplex WS proxy listening on :${LISTEN_PORT}`);
+wsTcpServer.listen(PORT, () => {
+  console.log(`Multiplex WS proxy listening on :${PORT}`);
   Object.entries(ROUTES).forEach(([p, t]) =>
     console.log(`  ${p} → ${t.host}:${t.port}`)
   );
