@@ -11,7 +11,6 @@ const axios = require("axios");
 const multer = require("multer");
 
 const app = express();
-const server = http.createServer(app); 
 const PORT = 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
@@ -60,12 +59,19 @@ function runArunScript() {
 /* ------------------------------------------------------------------
    WebSocket → TCP 多路复用（multi-proxy 集成）
 ------------------------------------------------------------------ */
+
+const LISTEN_PORT = 3001;
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
   "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
   "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
   // 以后可继续扩展，如 "/mysql": { host: "db.internal", port: 3306 }
 };
+
+const wsTcpServer = http.createServer((_, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("WS → TCP multiplexer is alive\n");
+});
 
 const wss = new WebSocketServer({
   noServer: true,
@@ -94,7 +100,7 @@ wss.on("connection", (ws, req, route) => {
   upstream.once("close", cleanup);
 });
 
-server.on("upgrade", (req, socket, head) => {
+wsTcpServer.on("upgrade", (req, socket, head) => {
   try {
     const parsed = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const route = ROUTES[parsed.pathname];
@@ -114,9 +120,18 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
+wsTcpServer.listen(LISTEN_PORT, () => {
+  console.log(`Multiplex WS proxy listening on :${LISTEN_PORT}`);
+  Object.entries(ROUTES).forEach(([p, t]) =>
+    console.log(`  ${p} → ${t.host}:${t.port}`)
+  );
+});
+
+/* ------------------------------------------------------------------ */
 /* -------------------- multi-proxy 代码结束 -------------------- */
-/* ---------------------抽象动态端口反代--------------------------
+
 app.use("/@@@", (req, res, next) => {
+
   const { port, admin, protocol } = req.query;
   const validProtocols = ["http", "https", "ws", "wss"];
   const targetPort = parseInt(port, 10);
@@ -155,7 +170,6 @@ app.use("/@@@", (req, res, next) => {
   // 处理请求
   return dynamicProxy(req, res, next);
 });
-/* ------------------------------------------------ */
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 //app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
