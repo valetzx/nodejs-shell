@@ -11,6 +11,7 @@ const axios = require("axios");
 const multer = require("multer");
 
 const app = express();
+const server = http.createServer(app); 
 const PORT = 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
@@ -66,11 +67,6 @@ const ROUTES = {
   // 以后可继续扩展，如 "/mysql": { host: "db.internal", port: 3306 }
 };
 
-const wsTcpServer = http.createServer((_, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("WS → TCP multiplexer is alive\n");
-});
-
 const wss = new WebSocketServer({
   noServer: true,
   perMessageDeflate: false,
@@ -98,7 +94,7 @@ wss.on("connection", (ws, req, route) => {
   upstream.once("close", cleanup);
 });
 
-wsTcpServer.on("upgrade", (req, socket, head) => {
+server.on("upgrade", (req, socket, head) => {
   try {
     const parsed = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const route = ROUTES[parsed.pathname];
@@ -116,13 +112,6 @@ wsTcpServer.on("upgrade", (req, socket, head) => {
   } catch (err) {
     socket.destroy();
   }
-});
-
-wsTcpServer.listen(PORT, () => {
-  console.log(`Multiplex WS proxy listening on :${PORT}`);
-  Object.entries(ROUTES).forEach(([p, t]) =>
-    console.log(`  ${p} → ${t.host}:${t.port}`)
-  );
 });
 
 /* -------------------- multi-proxy 代码结束 -------------------- */
