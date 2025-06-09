@@ -70,7 +70,7 @@ const ROUTES = {
 
 const wsTcpServer = http.createServer((_, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("WS → TCP multiplexer is alive\n");
+  res.end("???\n");
 });
 
 const wss = new WebSocketServer({
