@@ -50,6 +50,8 @@ docker run -d -p 3000:3000 \
 
 打开 `http://<host>:<port>/@` 可见双列 Dashboard：
 
+![image](https://github.com/user-attachments/assets/dad0d6e4-2956-4aa0-a956-35797706cada)
+
 * **左侧**：输入管理员口令后可执行 Bash 命令（输出保存至 `./logs`）
 * **右侧**：文件浏览 / 上传 / 新建 / 删除（需上传口令）
 
