@@ -318,6 +318,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+app.use("/files", express.static(DOWNLOAD_FOLDER));
+
 app.get("/file", (req, res) => {
   const folder = req.query.folder || "";
   const targetPath = path.join(DOWNLOAD_FOLDER, folder);
