@@ -104,7 +104,7 @@ const PANEL_HTML = `
           .then((res) => res.text())
           .then((data) => {
             const output = document.getElementById("output");
-            output.innerHTML += \`\n[\\\${new Date().toLocaleString()}] 执行结果:\n\\\${data}\n\n\`;
+            output.innerHTML += \`\n[\${new Date().toLocaleString()}] 执行结果:\n\${data}\n\n\`;
             output.scrollTop = output.scrollHeight;
           })
           .catch((err) => alert("请求失败: " + err));
