@@ -1,22 +1,146 @@
 const express = require("express");
+const http = require("http");
 const { spawn } = require("child_process");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const os = require("os");
 const fs = require("fs");
+const net = require("net");
 const path = require("path");
 const axios = require("axios");
 const multer = require("multer");
-
-const app = express();
-const PORT = 3000;
+const { WebSocketServer } = require("ws");
+const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
-const FILES_LIST_URL = process.env.FILES_LIST_URL || "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
+const FILES_LIST_URL =
+  process.env.FILES_LIST_URL ||
+  "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
+
+const PANEL_HTML = `
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>综合管理面板</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+        height: 100vh;
+      }
+      .panel {
+        width: 48%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: horizontal;
+        overflow: auto;
+      }
+      #output {
+        white-space: pre-wrap;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .cmd-entry {
+        margin-bottom: 10px;
+      }
+      /* 让文件列表区更好显示 */
+      .file-list ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      .file-list li {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 左侧 Bash 面板 -->
+    <div class="panel">
+      <h2>Bash 面板</h2>
+      <div class="cmd-entry">
+        <label for="admin">管理员密码：</label>
+        <input type="password" id="admin" />
+      </div>
+      <div class="cmd-entry">
+        <label><input type="checkbox" id="reFlag" /> 启用 re=1</label>
+      </div>
+      <div class="cmd-entry">
+        <label for="cmd">命令：</label>
+        <input type="text" id="cmd" placeholder="输入如 ls、pwd 等命令" />
+        <button onclick="runCommand()">发送</button>
+      </div>
+      <div id="output"></div>
+    </div>
+
+    <!-- 右侧文件上传功能 -->
+    <div class="panel file-list">
+      <div id="file-list">
+        <!-- 文件列表将在此处显示 -->
+      </div>
+    </div>
+
+    <script>
+      // 执行 Bash 命令并显示结果
+      function runCommand() {
+        const admin = document.getElementById("admin").value.trim();
+        const re = document.getElementById("reFlag").checked ? "&re=1" : "";
+        let command = document.getElementById("cmd").value.trim();
+        if (!command) return alert("请输入命令");
+        command = encodeURIComponent("date && " + command);
+
+        fetch('/bash/' + command + '?admin=' + admin + re)
+          .then((res) => res.text())
+          .then((data) => {
+            const output = document.getElementById("output");
+            output.innerHTML += \`\n[\${new Date().toLocaleString()}] 执行结果:\n\${data}\n\n\`;
+            output.scrollTop = output.scrollHeight;
+          })
+          .catch((err) => alert("请求失败: " + err));
+      }
+
+      // 文件上传表单密码验证
+      function withPassword(form) {
+        const pwd = document.getElementById("unipass").value;
+        if (!pwd) {
+          alert("请输入统一密码");
+          return false;
+        }
+        const inputs = form.querySelectorAll("input[name=password]");
+        inputs.forEach((input) => (input.value = pwd));
+        return true;
+      }
+
+      // 获取并显示文件列表
+      function fetchFileList() {
+        fetch("/file?folder=") // 默认读取根目录，可以修改为动态路径
+          .then((res) => res.text())
+          .then((data) => {
+            document.getElementById("file-list").innerHTML = data;
+          })
+          .catch((err) => {
+            document.getElementById("file-list").innerHTML =
+              "无法加载文件列表：" + err;
+          });
+      }
+
+      // 页面加载时获取文件列表
+      window.onload = fetchFileList;
+    </script>
+  </body>
+</html>
+`;
 
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
@@ -28,7 +152,11 @@ async function downloadFiles() {
     for (const url of fileUrls) {
       const fileName = path.basename(url);
       const filePath = path.join(DOWNLOAD_FOLDER, fileName);
-      const downloadResponse = await axios({ method: "get", url, responseType: "stream" });
+      const downloadResponse = await axios({
+        method: "get",
+        url,
+        responseType: "stream",
+      });
       const writer = fs.createWriteStream(filePath);
       downloadResponse.data.pipe(writer);
       await new Promise((resolve, reject) => {
@@ -47,13 +175,91 @@ async function downloadFiles() {
 function runArunScript() {
   const scriptPath = path.join(__dirname, "arun.sh");
   fs.chmodSync(scriptPath, "777");
-  const process = spawn(scriptPath, [], { shell: true, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+  const process = spawn(scriptPath, [], {
+    shell: true,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   process.stdout.on("data", (data) => console.log(`stdout: ${data}`));
   process.stderr.on("data", (data) => console.error(`stderr: ${data}`));
   process.unref();
 }
 
-app.use("/ray", createProxyMiddleware({ target: "http://0.0.0.0:2098", changeOrigin: true, ws: true, secure: false }));
+/* ------------------------------------------------------------------
+   WebSocket → TCP 多路复用（multi-proxy 集成）
+------------------------------------------------------------------ */
+
+const app = express();
+const server = http.createServer(app);
+
+const ROUTES = {
+  "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
+  "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
+  "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
+  "/etdef": { host: "127.0.0.1", port: 11010 }, // Shadowsocks TCP inbound
+  //"/etwss": { host: "127.0.0.1", port: 11012 }, // Shadowsocks TCP inbound
+  // add more routes here if needed
+};
+
+const wss = new WebSocketServer({
+  noServer: true,
+  perMessageDeflate: false,
+  maxPayload: 0,
+});
+
+wss.on("connection", (ws, req, route) => {
+  const { host, port } = route;
+  const upstream = net.createConnection({ host, port }, () =>
+    console.log(`[+] ${req.url} → ${host}:${port} connected`),
+  );
+
+  ws.on("message", (chunk) => upstream.write(chunk));
+  upstream.on("data", (chunk) => {
+    if (ws.readyState === ws.OPEN) ws.send(chunk);
+  });
+
+  const cleanup = () => {
+    upstream.destroy();
+    ws.close();
+  };
+  ws.once("close", cleanup);
+  ws.once("error", cleanup);
+  upstream.once("error", cleanup);
+  upstream.once("close", cleanup);
+});
+
+server.on("upgrade", (req, socket, head) => {
+  try {
+    const parsed = new URL(
+      req.url,
+      `http://${req.headers.host || "localhost"}`,
+    );
+    const route = ROUTES[parsed.pathname];
+    const adminParam = parsed.searchParams.get("admin");
+
+    if (!route || adminParam !== ADMIN_PASSWORD) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req, route);
+    });
+  } catch (err) {
+    socket.destroy();
+  }
+});
+
+app.get(Object.keys(ROUTES), (_, res) => {
+  res
+    .status(200)
+    .type("text/plain")
+    .send("WebSocket endpoint — please connect via WS protocol\n");
+});
+
+/* -------------------- multi-proxy 代码结束 -------------------- */
+/*
 app.use("/@@@", (req, res, next) => {
 
   const { port, admin, protocol } = req.query;
@@ -94,16 +300,25 @@ app.use("/@@@", (req, res, next) => {
   // 处理请求
   return dynamicProxy(req, res, next);
 });
+*/
 //app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
 //app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
-app.get("/@", (req, res) => { res.sendFile(path.join(__dirname, "panel.html" ));});
-app.use("/app", createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true }));
+app.get("/@", (req, res) => {
+  res.type("html").send(PANEL_HTML);
+});
+
+app.use(
+  "/app",
+  createProxyMiddleware({ target: "http://0.0.0.0:2095", changeOrigin: true }),
+);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, DOWNLOAD_FOLDER),
   filename: (req, file, cb) => cb(null, file.originalname),
 });
 const upload = multer({ storage: storage });
+
+app.use("/files", express.static(DOWNLOAD_FOLDER));
 
 app.get("/file", (req, res) => {
   const folder = req.query.folder || "";
@@ -113,11 +328,22 @@ app.get("/file", (req, res) => {
   fs.readdir(targetPath, { withFileTypes: true }, (err, entries) => {
     if (err) return res.status(500).send("无法读取文件夹内容");
 
-    const files = entries.filter(entry => entry.isFile()).map(entry => entry.name);
-    const folders = entries.filter(entry => entry.isDirectory()).map(entry => entry.name);
+    const files = entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name);
+    const folders = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
 
-    const fileList = files.map(file => `<li><a href="/files/${path.join(folder, file)}" download>${file}</a></li>`).join("");
-    const folderList = folders.map(sub => `
+    const fileList = files
+      .map(
+        (file) =>
+          `<li><a href="/files/${path.join(folder, file)}" download>${file}</a></li>`,
+      )
+      .join("");
+    const folderList = folders
+      .map(
+        (sub) => `
       <li>
         <a href="/file?folder=${path.join(folder, sub)}">📁 ${sub}</a>
         <form action="/rmdir" method="post" style="display:inline;margin-left:10px">
@@ -127,7 +353,9 @@ app.get("/file", (req, res) => {
           <button type="submit" onclick="return withPassword(this.form, '确定要删除该文件夹吗？')">删除</button>
         </form>
       </li>
-    `).join("");
+    `,
+      )
+      .join("");
 
     res.send(`
       <html>
@@ -167,7 +395,7 @@ app.get("/file", (req, res) => {
             <input type="submit" value="新建文件夹" />
           </form>
 
-          <h3>当前路径：${folder || '/'} </h3>
+          <h3>当前路径：${folder || "/"} </h3>
           ${folder ? `<a href="/file?folder=${parentPath}">⬅ 返回上一级</a>` : ""}
 
           <h4>子文件夹</h4>
@@ -181,7 +409,6 @@ app.get("/file", (req, res) => {
   });
 });
 
-// 创建子目录支持，验证密码
 app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
   const { dirname, parent = "", password } = req.body;
   if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
@@ -196,7 +423,6 @@ app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
   }
 });
 
-// 删除目录路由，验证密码
 app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
   const { target, password, folder } = req.body;
   if (!target) return res.status(400).send("未指定目录");
@@ -212,10 +438,10 @@ app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
   }
 });
 
-// 上传文件处理，验证密码
 app.post("/file", upload.single("file"), (req, res) => {
   const { password, folder = "" } = req.body;
-  if (password !== UPLOAD_PASSWORD) return res.status(403).send("密码错误，上传失败！");
+  if (password !== UPLOAD_PASSWORD)
+    return res.status(403).send("密码错误，上传失败！");
   if (!req.file) return res.status(400).send("没有文件上传！");
   console.log(`文件已上传: ${req.file.originalname}`);
   res.redirect(`/file?folder=${folder}`);
@@ -224,7 +450,7 @@ app.post("/file", upload.single("file"), (req, res) => {
 app.get("/pid/list", (req, res) => {
   const processList = spawn("ps", ["-aux"]);
   let output = "";
-  processList.stdout.on("data", (data) => output += data);
+  processList.stdout.on("data", (data) => (output += data));
   processList.on("close", () => {
     res.setHeader("Content-Type", "text/html");
     res.send(`<pre>${output}</pre>`);
@@ -234,7 +460,8 @@ app.get("/pid/list", (req, res) => {
 app.get("/pid/kill/:pid", (req, res) => {
   const pid = req.params.pid;
   const adminParam = req.query.admin;
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) return res.status(403).send("身份验证失败，无法终止进程。");
+  if (!adminParam || adminParam !== ADMIN_PASSWORD)
+    return res.status(403).send("身份验证失败，无法终止进程。");
   try {
     process.kill(pid, "SIGKILL");
     res.send(`进程 ${pid} 已被终止`);
@@ -245,17 +472,21 @@ app.get("/pid/kill/:pid", (req, res) => {
 
 app.get("/run/ip", (req, res) => {
   const networkInterfaces = os.networkInterfaces();
-  const ipAddresses = Object.values(networkInterfaces).flat().map(details => ({
-    address: details.address,
-    family: details.family === "IPv4" ? "IPv4" : "IPv6",
-    internal: details.internal,
-  })).filter(details => !details.internal);
+  const ipAddresses = Object.values(networkInterfaces)
+    .flat()
+    .map((details) => ({
+      address: details.address,
+      family: details.family === "IPv4" ? "IPv4" : "IPv6",
+      internal: details.internal,
+    }))
+    .filter((details) => !details.internal);
   res.json(ipAddresses);
 });
 
 app.get("/run/:command", (req, res) => {
   const cmdParam = req.params.command;
-  const shellCommand = cmdParam === "ls" ? "ls -a" : cmdParam === "name" ? "uname -a" : null;
+  const shellCommand =
+    cmdParam === "ls" ? "ls -a" : cmdParam === "name" ? "uname -a" : null;
   if (!shellCommand) return res.status(400).send("无效命令");
   spawn(shellCommand, { shell: true }).stdout.on("data", (data) => {
     res.setHeader("Content-Type", "text/html");
@@ -267,14 +498,16 @@ app.get("/bash/:command", (req, res) => {
   const userCommand = req.params.command;
   const adminParam = req.query.admin;
   const reRun = req.query.re === "1";
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) return res.status(403).send("身份验证失败，禁止执行命令。");
+  if (!adminParam || adminParam !== ADMIN_PASSWORD)
+    return res.status(403).send("身份验证失败，禁止执行命令。");
   const sanitizedCmd = userCommand.replace(/[^a-zA-Z0-9_-]/g, "_");
   const logFile = path.join(LOGS_FOLDER, `${sanitizedCmd}.log`);
   let history = {};
   if (fs.existsSync(COMMAND_HISTORY)) {
     history = JSON.parse(fs.readFileSync(COMMAND_HISTORY, "utf-8"));
   }
-  if (!reRun && history[userCommand]) return res.sendFile(path.resolve(logFile));
+  if (!reRun && history[userCommand])
+    return res.sendFile(path.resolve(logFile));
   history[userCommand] = true;
   fs.writeFileSync(COMMAND_HISTORY, JSON.stringify(history));
   const process = spawn(userCommand, { shell: true });
@@ -285,10 +518,10 @@ app.get("/bash/:command", (req, res) => {
   res.send(`任务已启动，稍后访问查看结果: ${logFile}`);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`服务器已启动，访问地址：http://localhost:${PORT}`);
-  if (process.env.DISABLE_ARUN !== "1") {
-    downloadFiles().catch((error) => console.error("文件下载出错:", error));
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`服务器已启动，单端口监听 http/ws://localhost:${PORT}`);
+  if (DISABLE_ARUN !== "1") {
+    downloadFiles().catch((err) => console.error("文件下载出错:", err));
   } else {
     console.log("调试模式下已禁用 arun.sh 执行");
   }
