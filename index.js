@@ -75,6 +75,8 @@ const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
   "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
   "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
+  "/etdef": { host: "127.0.0.1", port: 11010 }, // Shadowsocks TCP inbound
+  "/etwss": { host: "127.0.0.1", port: 11012 }, // Shadowsocks TCP inbound
   // add more routes here if needed
 };
 
