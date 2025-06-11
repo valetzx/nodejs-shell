@@ -169,7 +169,7 @@ async function downloadFiles() {
       console.log(
         `主链接 ${FILES_LIST_URL} 无法访问，等待 ${FILES_WAIT_TIME} 秒后尝试备用链接...`,
       );
-      await waitFor(parseInt(FILES_WAIT_TIME)); 
+      await waitFor(parseInt(FILES_WAIT_TIME));
     }
 
     try {
@@ -218,10 +218,10 @@ function runArunScript() {
 const app = express();
 const server = http.createServer(app);
 const ROUTES = {
-  "/vm2098": { host: "127.0.0.1", port: 2098 }, 
+  "/vm2098": { host: "127.0.0.1", port: 2098 },
   "/to2022": { host: "127.0.0.1", port: 2022 },
-  "/vl2024": { host: "127.0.0.1", port: 2024 }, 
-  "/etdef": { host: "127.0.0.1", port: 11010 }, 
+  "/vl2024": { host: "127.0.0.1", port: 2024 },
+  "/etdef": { host: "127.0.0.1", port: 11010 },
 };
 
 const wss = new WebSocketServer({
@@ -282,7 +282,7 @@ app.get(Object.keys(ROUTES), (_, res) => {
 });
 
 app.get("/@", (req, res) => {
-  res.type("html").send(PANEL_HTML);
+  res.sendFile(path.join(__dirname, "modern_panel.html"));
 });
 
 app.use(
@@ -297,7 +297,31 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.use("/files", express.static(DOWNLOAD_FOLDER));
+app.get("/api/files", (req, res) => {
+  const folder = req.query.folder || "";
+  const targetPath = path.join(DOWNLOAD_FOLDER, folder);
 
+  fs.readdir(targetPath, { withFileTypes: true }, (err, entries) => {
+    if (err) return res.status(500).json({ error: "读取失败" });
+
+    const files = entries
+      .filter((e) => e.isFile())
+      .map((e) => ({
+        name: e.name,
+        type: "file",
+        path: path.join(folder, e.name),
+      }));
+    const folders = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => ({
+        name: e.name,
+        type: "folder",
+        path: path.join(folder, e.name),
+      }));
+
+    res.json({ current: folder || "/", files, folders });
+  });
+});
 app.get("/file", (req, res) => {
   const folder = req.query.folder || "";
   const targetPath = path.join(DOWNLOAD_FOLDER, folder);
