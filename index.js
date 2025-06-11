@@ -216,6 +216,7 @@ function runArunScript() {
 }
 
 const app = express();
+app.use(express.json());
 const server = http.createServer(app);
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 }, 
@@ -297,6 +298,59 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.use("/files", express.static(DOWNLOAD_FOLDER));
+
+app.get("/api/files", (req, res) => {
+  const dir = req.query.dir || "";
+  const targetPath = path.join(DOWNLOAD_FOLDER, dir);
+  fs.readdir(targetPath, { withFileTypes: true }, (err, entries) => {
+    if (err) return res.status(500).json({ error: "无法读取文件夹内容" });
+    const items = entries.map((entry) => {
+      const stats = fs.statSync(path.join(targetPath, entry.name));
+      return {
+        name: entry.name,
+        type: entry.isDirectory() ? "folder" : "file",
+        size: entry.isFile() ? stats.size : 0,
+        modified: stats.mtimeMs,
+      };
+    });
+    res.json({ path: dir, items });
+  });
+});
+
+app.post("/api/upload", upload.array("files"), (req, res) => {
+  const { dir = "", password } = req.body;
+  if (password !== UPLOAD_PASSWORD)
+    return res.status(403).json({ error: "权限验证失败" });
+  res.json({ success: true, files: (req.files || []).map((f) => f.originalname) });
+});
+
+app.post("/api/mkdir", (req, res) => {
+  const { dir = "", name, password } = req.body;
+  if (password !== UPLOAD_PASSWORD)
+    return res.status(403).json({ error: "权限验证失败" });
+  if (!name) return res.status(400).json({ error: "未提供文件夹名称" });
+  const newPath = path.join(DOWNLOAD_FOLDER, dir, name);
+  if (fs.existsSync(newPath)) return res.status(400).json({ error: "文件夹已存在" });
+  try {
+    fs.mkdirSync(newPath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/delete", (req, res) => {
+  const { target, password } = req.body;
+  if (password !== UPLOAD_PASSWORD)
+    return res.status(403).json({ error: "权限验证失败" });
+  const fullPath = path.join(DOWNLOAD_FOLDER, target);
+  try {
+    fs.rmSync(fullPath, { recursive: true, force: true });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get("/file", (req, res) => {
   const folder = req.query.folder || "";

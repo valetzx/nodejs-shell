@@ -564,35 +564,37 @@
       // 合并并渲染
       const allItems = [...folders, ...fileItems];
       
-      let html = '';
-      allItems.forEach(item => {
-        const icon = item.type === 'folder' 
-          ? '<i class="fa fa-folder text-yellow-500 mr-2"></i>' 
-          : '<i class="fa fa-file-o text-gray-400 mr-2"></i>';
-        
-        html += `
-          <div class="file-item p-3 hover:bg-gray-50 transition-colors border-b last:border-b-0 flex items-center justify-between cursor-pointer" data-name="${item.name}" data-type="${item.type}">
-            <div class="flex items-center">
-              ${icon}
-              <span class="font-medium">${item.name}</span>
-            </div>
-            <div class="flex items-center space-x-4 text-sm text-gray-500">
-              <span>${item.size}</span>
-              <span>${item.modified}</span>
-              <div class="file-actions opacity-0 hover:opacity-100 transition-opacity flex space-x-2">
-                ${item.type === 'folder' ? '' : `
-                  <button class="text-primary hover:text-primary/80 download-file" data-name="${item.name}">
-                    <i class="fa fa-download"></i>
+        let html = '';
+        allItems.forEach(item => {
+          const icon = item.type === 'folder'
+            ? '<i class="fa fa-folder text-yellow-500 mr-2"></i>'
+            : '<i class="fa fa-file-o text-gray-400 mr-2"></i>';
+          const sizeStr = item.type === 'file' ? (item.size / 1024).toFixed(1) + ' KB' : '-';
+          const timeStr = new Date(item.modified).toLocaleString();
+
+          html += `
+            <div class="file-item p-3 hover:bg-gray-50 transition-colors border-b last:border-b-0 flex items-center justify-between cursor-pointer" data-name="${item.name}" data-type="${item.type}">
+              <div class="flex items-center">
+                ${icon}
+                <span class="font-medium">${item.name}</span>
+              </div>
+              <div class="flex items-center space-x-4 text-sm text-gray-500">
+                <span>${sizeStr}</span>
+                <span>${timeStr}</span>
+                <div class="file-actions opacity-0 hover:opacity-100 transition-opacity flex space-x-2">
+                  ${item.type === 'folder' ? '' : `
+                    <button class="text-primary hover:text-primary/80 download-file" data-name="${item.name}">
+                      <i class="fa fa-download"></i>
+                    </button>
+                  `}
+                  <button class="text-danger hover:text-danger/80 delete-item" data-name="${item.name}" data-type="${item.type}">
+                    <i class="fa fa-trash-o"></i>
                   </button>
-                `}
-                <button class="text-danger hover:text-danger/80 delete-item" data-name="${item.name}" data-type="${item.type}">
-                  <i class="fa fa-trash-o"></i>
-                </button>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-      });
+          `;
+        });
       
       fileListContainer.innerHTML = html;
       fileCount.textContent = allItems.length;
@@ -617,8 +619,7 @@
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const fileName = btn.dataset.name;
-          // 在实际应用中，这里会调用下载 API
-          alert(`下载文件: ${fileName}`);
+          window.open(`${API_BASE_URL}/files/${currentDir ? currentDir + '/' : ''}${fileName}`, '_blank');
         });
       });
       
@@ -636,10 +637,17 @@
           
           // 设置确认按钮的回调
           modalConfirm.onclick = () => {
-            // 在实际应用中，这里会调用删除 API
-            alert(`删除 ${type === 'folder' ? '文件夹' : '文件'}: ${name}`);
-            loadFileList();
-            closeModal();
+            const pwd = prompt('请输入管理员密码');
+            if (!pwd) return;
+            fetch(`${API_BASE_URL}/api/delete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ target: currentDir ? `${currentDir}/${name}` : name, password: pwd })
+            })
+              .then(res => res.json())
+              .then(() => loadFileList())
+              .catch(() => alert('删除失败'))
+              .finally(closeModal);
           };
           
           openModal();
@@ -651,57 +659,39 @@
     function executeCommand() {
       const command = terminalInput.value.trim();
       if (!command) return;
-      
-      // 添加命令到终端
+
       const commandElement = document.createElement('div');
       commandElement.className = 'text-gray-400 mb-2';
       commandElement.innerHTML = `<span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># <span class="text-white">${command}</span>`;
       terminalOutput.appendChild(commandElement);
-      
-      // 清空输入框
+
       terminalInput.value = '';
-      
-      // 在实际应用中，这里会调用 /bash API
+
       const outputElement = document.createElement('div');
       outputElement.className = 'mb-4';
-      
-      // 模拟命令执行
-      if (command === 'ls' || command === 'ls -la') {
-        // 显示文件列表
-        outputElement.innerHTML = mockFiles.map(file => {
-          const icon = file.type === 'folder' ? '📁' : '📄';
-          return `${icon} ${file.name}${file.type === 'file' ? ` (${file.size})` : ''}`;
-        }).join('\n');
-      } else if (command === 'df -h') {
-        // 显示磁盘空间
-        outputElement.innerHTML = `Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda1        20G   5.8G   14G  30% /`;
-      } else if (command === 'free -m') {
-        // 显示内存使用
-        outputElement.innerHTML = `              total        used        free      shared  buff/cache   available\nMem:           4096        1500        1200         200        1396        2500\nSwap:          2048           0        2048`;
-      } else if (command === 'ps aux') {
-        // 显示进程列表
-        outputElement.innerHTML = `USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND\nroot         1  0.0  0.1  12568  3200 ?        Ss   Jun01   0:04 /sbin/init\nroot         2  0.0  0.0      0     0 ?        S    Jun01   0:00 [kthreadd]\n...`;
-      } else if (command === 'hostname -I') {
-        // 显示 IP 地址
-        outputElement.innerHTML = mockSystemData.ip;
-      } else if (command === 'uptime') {
-        // 显示运行时间
-        outputElement.innerHTML = mockSystemData.uptime;
-      } else {
-        // 未知命令
-        outputElement.innerHTML = `bash: ${command}: command not found`;
+
+      const pwd = adminCheckbox.checked ? adminPassword.value.trim() : '';
+      if (adminCheckbox.checked && !pwd) {
+        outputElement.textContent = '请输入管理员密码';
+        terminalOutput.appendChild(outputElement);
+        return;
       }
-      
-      terminalOutput.appendChild(outputElement);
-      
-      // 添加新的命令提示符
-      const promptElement = document.createElement('div');
-      promptElement.className = 'text-gray-400';
-      promptElement.innerHTML = `<span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># `;
-      terminalOutput.appendChild(promptElement);
-      
-      // 滚动到底部
-      terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+      fetch(`${API_BASE_URL}/bash/${encodeURIComponent(command)}?admin=${encodeURIComponent(pwd)}`)
+        .then(res => res.text())
+        .then(text => {
+          outputElement.textContent = text;
+          terminalOutput.appendChild(outputElement);
+          const promptElement = document.createElement('div');
+          promptElement.className = 'text-gray-400';
+          promptElement.innerHTML = `<span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># `;
+          terminalOutput.appendChild(promptElement);
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        })
+        .catch(() => {
+          outputElement.textContent = '命令执行失败';
+          terminalOutput.appendChild(outputElement);
+        });
     }
     
     // 切换管理员模式
@@ -733,8 +723,15 @@
         return;
       }
       
-      // 在实际应用中，这里会调用上传 API
-      alert(`上传 ${fileUploadInput.files.length} 个文件...`);
+      const formData = new FormData();
+      Array.from(fileUploadInput.files).forEach(f => formData.append('files', f));
+      formData.append('dir', currentDir);
+      formData.append('password', password);
+
+      fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(() => loadFileList())
+        .catch(() => alert('上传失败'));
       
       // 重置表单
       uploadFileForm.classList.add('hidden');
@@ -763,8 +760,14 @@
         return;
       }
       
-      // 在实际应用中，这里会调用创建文件夹 API
-      alert(`创建文件夹: ${name}`);
+      fetch(`${API_BASE_URL}/api/mkdir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: currentDir, name, password })
+      })
+        .then(res => res.json())
+        .then(() => loadFileList())
+        .catch(() => alert('创建失败'));
       
       // 重置表单
       newFolderForm.classList.add('hidden');
