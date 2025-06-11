@@ -1,352 +1,483 @@
 <!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>终端管理面板</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-    
-    .terminal {
-      --terminal-bg: #1e1e1e;
-      --terminal-text: #d4d4d4;
-      --terminal-prompt: #3e90f0;
-      --terminal-command: #c5c5c5;
-      --terminal-output: #d4d4d4;
-      --terminal-error: #f48771;
-      --terminal-success: #35d7bb;
-    }
-    
-    .terminal-output {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    
-    .prompt {
-      color: var(--terminal-prompt);
-    }
-    
-    .command {
-      color: var(--terminal-command);
-    }
-    
-    .output {
-      color: var(--terminal-output);
-      white-space: pre-wrap;
-    }
-    
-    .error {
-      color: var(--terminal-error);
-    }
-    
-    .success {
-      color: var(--terminal-success);
-    }
-    
-    .terminal-scrollbar::-webkit-scrollbar {
-      width: 8px;
-    }
-    
-    .terminal-scrollbar::-webkit-scrollbar-track {
-      background: #2d2d2d;
-    }
-    
-    .terminal-scrollbar::-webkit-scrollbar-thumb {
-      background: #555;
-      border-radius: 4px;
-    }
-    
-    .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #777;
-    }
-    
-    .cursor {
-      display: inline-block;
-      width: 8px;
-      height: 16px;
-      background-color: var(--terminal-text);
-      margin-left: 2px;
-      animation: blink 1s infinite;
-    }
-    
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-  </style>
-</head>
-<body class="bg-gray-900 text-gray-200 min-h-screen p-4">
-  <div class="max-w-7xl mx-auto">
-    <header class="mb-6 text-center">
-      <h1 class="text-2xl font-bold text-cyan-400 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        服务器终端管理
-      </h1>
-      <p class="text-gray-400 text-sm mt-1">基于 Node.js 的交互式终端</p>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>终端管理面板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
-    <div class="flex flex-col lg:flex-row gap-6">
-      <!-- 终端样式 Bash 面板 -->
-      <div class="flex-1">
-        <div class="bg-[#1e1e1e] rounded-xl shadow-xl overflow-hidden">
-          <div class="flex items-center px-4 py-2 bg-[#252526] border-b border-gray-700">
-            <div class="flex space-x-2">
-              <div class="w-3 h-3 rounded-full bg-red-500"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            </div>
-            <div class="ml-2 text-xs text-gray-400">bash - 服务器终端</div>
-          </div>
-          
-          <div class="p-4">
-            <div class="flex items-center space-x-3 mb-4">
-              <div class="flex items-center">
-                <label class="text-gray-400 text-sm mr-2">管理员</label>
-                <input 
-                  type="password" 
-                  id="admin" 
-                  class="bg-[#252526] text-gray-200 px-3 py-1 rounded text-sm border border-gray-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                  placeholder="密码"
-                />
-              </div>
-              <div class="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="reFlag" 
-                  class="w-4 h-4 text-cyan-500 rounded focus:ring-cyan-500 bg-gray-700 border-gray-600"
-                />
-                <label for="reFlag" class="text-gray-400 text-sm ml-1">re=1</label>
-              </div>
-            </div>
-            
-            <div 
-              id="output" 
-              class="terminal-output bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 max-h-96 overflow-y-auto terminal-scrollbar mb-4"
+      .terminal {
+        --terminal-bg: #1e1e1e;
+        --terminal-text: #d4d4d4;
+        --terminal-prompt: #3e90f0;
+        --terminal-command: #c5c5c5;
+        --terminal-output: #d4d4d4;
+        --terminal-error: #f48771;
+        --terminal-success: #35d7bb;
+      }
+
+      .terminal-output {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .prompt {
+        color: var(--terminal-prompt);
+      }
+
+      .command {
+        color: var(--terminal-command);
+      }
+
+      .output {
+        color: var(--terminal-output);
+        white-space: pre-wrap;
+      }
+
+      .error {
+        color: var(--terminal-error);
+      }
+
+      .success {
+        color: var(--terminal-success);
+      }
+
+      .terminal-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .terminal-scrollbar::-webkit-scrollbar-track {
+        background: #2d2d2d;
+      }
+
+      .terminal-scrollbar::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 4px;
+      }
+
+      .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #777;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 16px;
+        background-color: var(--terminal-text);
+        margin-left: 2px;
+        animation: blink 1s infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-200 min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+      <header class="mb-6 text-center">
+        <h1
+          class="text-2xl font-bold text-cyan-400 flex items-center justify-center"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 mr-2"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          服务器终端管理
+        </h1>
+        <p class="text-gray-400 text-sm mt-1">基于 Node.js 的交互式终端</p>
+      </header>
+
+      <div class="flex flex-col lg:flex-row gap-6">
+        <!-- 终端样式 Bash 面板 -->
+        <div class="flex-1">
+          <div class="bg-[#1e1e1e] rounded-xl shadow-xl overflow-hidden">
+            <div
+              class="flex items-center px-4 py-2 bg-[#252526] border-b border-gray-700"
             >
-              <div class="output">
-                <span class="prompt">$</span>
-                <span class="text-gray-400 ml-2">欢迎使用服务器终端管理面板</span>
+              <div class="flex space-x-2">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
-              <div class="output mt-2">
-                <span class="prompt">$</span>
-                <span class="text-gray-400 ml-2">输入命令并按Enter执行</span>
+              <div class="ml-2 text-xs text-gray-400">bash - 服务器终端</div>
+            </div>
+
+            <div class="p-4">
+              <div class="flex items-center space-x-3 mb-4">
+                <div class="flex items-center">
+                  <label class="text-gray-400 text-sm mr-2">管理员</label>
+                  <input
+                    type="password"
+                    id="admin"
+                    class="bg-[#252526] text-gray-200 px-3 py-1 rounded text-sm border border-gray-700 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    placeholder="密码"
+                  />
+                </div>
+                <div class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="reFlag"
+                    class="w-4 h-4 text-cyan-500 rounded focus:ring-cyan-500 bg-gray-700 border-gray-600"
+                  />
+                  <label for="reFlag" class="text-gray-400 text-sm ml-1"
+                    >re=1</label
+                  >
+                </div>
               </div>
-              <div class="output mt-2">
+
+              <div
+                id="output"
+                class="terminal-output bg-[#1e1e1e] p-4 rounded-lg border border-gray-700 max-h-96 overflow-y-auto terminal-scrollbar mb-4"
+              >
+                <div class="output">
+                  <span class="prompt">$</span>
+                  <span class="text-gray-400 ml-2"
+                    >欢迎使用服务器终端管理面板</span
+                  >
+                </div>
+                <div class="output mt-2">
+                  <span class="prompt">$</span>
+                  <span class="text-gray-400 ml-2">输入命令并按Enter执行</span>
+                </div>
+                <div class="output mt-2">
+                  <span class="prompt">$</span>
+                  <span class="text-gray-400 ml-2"
+                    >尝试输入
+                    <span class="text-cyan-400">ls -la</span> 开始探索</span
+                  >
+                </div>
+              </div>
+
+              <div
+                class="flex items-center bg-[#252526] border border-gray-700 rounded-lg px-3 py-2"
+              >
                 <span class="prompt">$</span>
-                <span class="text-gray-400 ml-2">尝试输入 <span class="text-cyan-400">ls -la</span> 开始探索</span>
+                <input
+                  type="text"
+                  id="cmd"
+                  class="flex-1 bg-transparent text-gray-200 px-3 py-1 focus:outline-none font-mono"
+                  placeholder="输入命令..."
+                  autocomplete="off"
+                  autofocus
+                />
+                <button
+                  onclick="runCommand()"
+                  class="bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium py-1.5 px-4 rounded transition duration-200"
+                >
+                  执行
+                </button>
               </div>
             </div>
-            
-            <div class="flex items-center bg-[#252526] border border-gray-700 rounded-lg px-3 py-2">
-              <span class="prompt">$</span>
-              <input 
-                type="text" 
-                id="cmd" 
-                class="flex-1 bg-transparent text-gray-200 px-3 py-1 focus:outline-none font-mono"
-                placeholder="输入命令..."
-                autocomplete="off"
-                autofocus
-              />
-              <button 
-                onclick="runCommand()"
-                class="bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium py-1.5 px-4 rounded transition duration-200"
+          </div>
+
+          <div class="mt-4 bg-gray-800 rounded-lg p-4">
+            <h3 class="text-gray-400 text-sm font-medium mb-2">常用命令示例</h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                onclick="insertCommand('ls -la')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded"
               >
-                执行
+                ls -la
+              </button>
+              <button
+                onclick="insertCommand('df -h')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded"
+              >
+                df -h
+              </button>
+              <button
+                onclick="insertCommand('top -n 1')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded"
+              >
+                top -n 1
+              </button>
+              <button
+                onclick="insertCommand('free -m')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded"
+              >
+                free -m
+              </button>
+              <button
+                onclick="insertCommand('netstat -tuln')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded"
+              >
+                netstat -tuln
               </button>
             </div>
           </div>
         </div>
-        
-        <div class="mt-4 bg-gray-800 rounded-lg p-4">
-          <h3 class="text-gray-400 text-sm font-medium mb-2">常用命令示例</h3>
-          <div class="flex flex-wrap gap-2">
-            <button onclick="insertCommand('ls -la')" class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded">ls -la</button>
-            <button onclick="insertCommand('df -h')" class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded">df -h</button>
-            <button onclick="insertCommand('top -n 1')" class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded">top -n 1</button>
-            <button onclick="insertCommand('free -m')" class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded">free -m</button>
-            <button onclick="insertCommand('netstat -tuln')" class="text-xs bg-gray-700 hover:bg-gray-600 text-cyan-300 px-2 py-1 rounded">netstat -tuln</button>
-          </div>
-        </div>
-      </div>
 
-      <!-- 右侧文件管理面板 -->
-      <div class="flex-1 bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-        <div class="bg-gray-700 p-4">
-          <h2 class="text-lg font-semibold text-white flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-            文件管理器
-          </h2>
-        </div>
-        
-        <div class="p-4">
-          <div id="file-list" class="space-y-4">
-            <div class="flex justify-center items-center h-64">
-              <div class="text-center">
-                <div class="animate-pulse text-gray-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <p class="mt-3 text-gray-400">正在加载文件列表...</p>
+        <!-- 右侧文件管理面板 -->
+        <div class="flex-1 bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+          <div class="bg-gray-700 p-4">
+            <h2 class="text-lg font-semibold text-white flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+              文件管理器
+            </h2>
+          </div>
+
+          <div class="p-4">
+            <div id="file-list" class="space-y-4">
+              <div class="flex justify-center items-center h-64">
+                <div class="text-center">
+                  <div class="animate-pulse text-gray-500">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-12 w-12 mx-auto"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                    <p class="mt-3 text-gray-400">正在加载文件列表...</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <footer class="mt-8 text-center text-gray-500 text-sm">
-      <p>© 2023 服务器终端管理 | 安全连接</p>
-    </footer>
-  </div>
 
-  <script>
-    let commandHistory = [];
-    let historyIndex = -1;
-    
-    // 执行 Bash 命令
-    function runCommand() {
-      const admin = document.getElementById("admin").value.trim();
-      const re = document.getElementById("reFlag").checked ? "&re=1" : "";
-      let command = document.getElementById("cmd").value.trim();
-      
-      if (!command) return;
-      
-      // 添加到历史记录
-      commandHistory.push(command);
-      historyIndex = commandHistory.length;
-      
-      // 在终端显示输入的命令
-      const output = document.getElementById("output");
-      const commandLine = document.createElement("div");
-      commandLine.className = "output";
-      commandLine.innerHTML = `<span class="prompt">$</span> <span class="command">${command}</span>`;
-      output.appendChild(commandLine);
-      
-      // 显示执行中状态
-      const processing = document.createElement("div");
-      processing.className = "output text-gray-500";
-      processing.innerHTML = '<span class="prompt">></span> 执行中...';
-      output.appendChild(processing);
-      
-      // 滚动到底部
-      output.scrollTop = output.scrollHeight;
-      
-      // 发送请求
-      const encodedCommand = encodeURIComponent("date && " + command);
-      
-      fetch('/bash/' + encodedCommand + '?admin=' + admin + re)
-        .then((res) => res.text())
-        .then((data) => {
-          // 移除执行中状态
-          output.removeChild(processing);
-          
-          // 显示结果
-          const result = document.createElement("div");
-          result.className = "output";
-          result.innerHTML = `<span class="prompt">></span> ${data}`;
-          output.appendChild(result);
-          
-          // 添加分隔线
-          const separator = document.createElement("div");
-          separator.className = "border-t border-gray-700 my-2";
-          output.appendChild(separator);
-          
-          // 滚动到底部
-          output.scrollTop = output.scrollHeight;
-          
-          // 清空输入框
-          document.getElementById("cmd").value = "";
-        })
-        .catch((err) => {
-          // 移除执行中状态
-          output.removeChild(processing);
-          
-          // 显示错误
-          const error = document.createElement("div");
-          error.className = "output error";
-          error.innerHTML = `<span class="prompt">!</span> 错误: ${err.message}`;
-          output.appendChild(error);
-          
-          // 滚动到底部
-          output.scrollTop = output.scrollHeight;
-          
-          // 清空输入框
-          document.getElementById("cmd").value = "";
-        });
-    }
-    
-    // 插入命令到输入框
-    function insertCommand(cmd) {
-      document.getElementById("cmd").value = cmd;
-      document.getElementById("cmd").focus();
-    }
-    
-    // 文件上传表单密码验证
-    function withPassword(form) {
-      const pwd = document.getElementById("unipass").value;
-      if (!pwd) {
-        alert("请输入统一密码");
-        return false;
+      <footer class="mt-8 text-center text-gray-500 text-sm">
+        <p>© 2023 服务器终端管理 | 安全连接</p>
+      </footer>
+    </div>
+
+    <script>
+      let commandHistory = [];
+      let historyIndex = -1;
+
+      // 执行 Bash 命令
+      function runCommand() {
+        const admin = document.getElementById("admin").value.trim();
+        const re = document.getElementById("reFlag").checked ? "&re=1" : "";
+        let command = document.getElementById("cmd").value.trim();
+
+        if (!command) return;
+
+        // 添加到历史记录
+        commandHistory.push(command);
+        historyIndex = commandHistory.length;
+
+        // 在终端显示输入的命令
+        const output = document.getElementById("output");
+        const commandLine = document.createElement("div");
+        commandLine.className = "output";
+        commandLine.innerHTML = `<span class="prompt">$</span> <span class="command">${command}</span>`;
+        output.appendChild(commandLine);
+
+        // 显示执行中状态
+        const processing = document.createElement("div");
+        processing.className = "output text-gray-500";
+        processing.innerHTML = '<span class="prompt">></span> 执行中...';
+        output.appendChild(processing);
+
+        // 滚动到底部
+        output.scrollTop = output.scrollHeight;
+
+        // 发送请求
+        const encodedCommand = encodeURIComponent("date && " + command);
+
+        fetch("/bash/" + encodedCommand + "?admin=" + admin + re)
+          .then((res) => res.text())
+          .then((data) => {
+            // 移除执行中状态
+            output.removeChild(processing);
+
+            // 显示结果
+            const result = document.createElement("div");
+            result.className = "output";
+            result.innerHTML = `<span class="prompt">></span> ${data}`;
+            output.appendChild(result);
+
+            // 添加分隔线
+            const separator = document.createElement("div");
+            separator.className = "border-t border-gray-700 my-2";
+            output.appendChild(separator);
+
+            // 滚动到底部
+            output.scrollTop = output.scrollHeight;
+
+            // 清空输入框
+            document.getElementById("cmd").value = "";
+          })
+          .catch((err) => {
+            // 移除执行中状态
+            output.removeChild(processing);
+
+            // 显示错误
+            const error = document.createElement("div");
+            error.className = "output error";
+            error.innerHTML = `<span class="prompt">!</span> 错误: ${err.message}`;
+            output.appendChild(error);
+
+            // 滚动到底部
+            output.scrollTop = output.scrollHeight;
+
+            // 清空输入框
+            document.getElementById("cmd").value = "";
+          });
       }
-      const inputs = form.querySelectorAll("input[name=password]");
-      inputs.forEach((input) => (input.value = pwd));
-      return true;
-    }
-    
-    // 获取并显示文件列表
-    function fetchFileList() {
-      fetch("/file?folder=")
-        .then((res) => res.text())
-        .then((data) => {
-          document.getElementById("file-list").innerHTML = data;
-        })
-        .catch((err) => {
-          document.getElementById("file-list").innerHTML = `
+
+      // 插入命令到输入框
+      function insertCommand(cmd) {
+        document.getElementById("cmd").value = cmd;
+        document.getElementById("cmd").focus();
+      }
+
+      // 文件上传表单密码验证
+      function withPassword(form) {
+        const pwd = document.getElementById("unipass").value;
+        if (!pwd) {
+          alert("请输入统一密码");
+          return false;
+        }
+        const inputs = form.querySelectorAll("input[name=password]");
+        inputs.forEach((input) => (input.value = pwd));
+        return true;
+      }
+
+      // 获取并显示文件列表
+      function fetchFileList() {
+        fetch("/file?folder=")
+          .then((res) => res.text())
+          .then((data) => {
+            document.getElementById("file-list").innerHTML = data;
+          })
+          .catch((err) => {
+            document.getElementById("file-list").innerHTML = `
             <div class="bg-red-900 text-red-200 p-4 rounded-lg">
               <p class="font-medium">无法加载文件列表</p>
               <p class="text-sm mt-1">${err}</p>
             </div>
           `;
-        });
-    }
-    
-    // 命令历史导航
-    document.getElementById("cmd").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
-        runCommand();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        if (commandHistory.length > 0) {
-          if (historyIndex <= 0) {
-            historyIndex = commandHistory.length;
+          });
+      }
+
+      // 命令历史导航
+      document.getElementById("cmd").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          runCommand();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (commandHistory.length > 0) {
+            if (historyIndex <= 0) {
+              historyIndex = commandHistory.length;
+            }
+            historyIndex--;
+            this.value = commandHistory[historyIndex];
           }
-          historyIndex--;
-          this.value = commandHistory[historyIndex];
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (historyIndex < commandHistory.length - 1) {
+            historyIndex++;
+            this.value = commandHistory[historyIndex];
+          } else {
+            historyIndex = commandHistory.length;
+            this.value = "";
+          }
         }
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        if (historyIndex < commandHistory.length - 1) {
-          historyIndex++;
-          this.value = commandHistory[historyIndex];
-        } else {
-          historyIndex = commandHistory.length;
-          this.value = "";
+      });
+
+      // 页面加载时获取文件列表
+      async function fetchFileList(folder = "") {
+        const container = document.getElementById("file-list");
+        container.innerHTML =
+          '<div class="text-gray-400 text-sm animate-pulse">加载中...</div>';
+
+        try {
+          const res = await fetch(
+            `/api/files?folder=${encodeURIComponent(folder)}`,
+          );
+          const data = await res.json();
+
+          if (data.error) {
+            container.innerHTML = `<div class="text-red-400">${data.error}</div>`;
+            return;
+          }
+
+          const folderList = data.folders
+            .map(
+              (f) => `
+          <div class="bg-gray-700 p-3 rounded flex items-center justify-between hover:bg-gray-600 transition">
+            <div class="flex items-center space-x-2">
+              <svg class="w-5 h-5 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <button onclick="fetchFileList('${f.path}')">${f.name}</button>
+            </div>
+          </div>
+        `,
+            )
+            .join("");
+
+          const fileList = data.files
+            .map(
+              (f) => `
+          <div class="bg-gray-700 p-3 rounded flex items-center justify-between hover:bg-gray-600 transition">
+            <div class="flex items-center space-x-2">
+              <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 17l5-5 5 5M7 7h10" />
+              </svg>
+              <a href="/files/${f.path}" download class="hover:underline">${f.name}</a>
+            </div>
+          </div>
+        `,
+            )
+            .join("");
+
+          container.innerHTML = `
+          <div class="text-sm text-gray-400 mb-2">路径: ${data.current}</div>
+          <div class="space-y-2">${folderList}${fileList}</div>
+        `;
+        } catch (err) {
+          container.innerHTML = `<div class="text-red-400">加载失败: ${err.message}</div>`;
         }
       }
-    });
-    
-    // 页面加载时获取文件列表
-    window.onload = function() {
-      fetchFileList();
-      document.getElementById("cmd").focus();
-    };
-  </script>
-</body>
+
+      window.onload = () => {
+        fetchFileList();
+        document.getElementById("cmd").focus();
+      };
+    </script>
+  </body>
 </html>
