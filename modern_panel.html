@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NodeJS Shell 管理面板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#0FC6C2',
+            accent: '#722ED1',
+            dark: '#1D2129',
+            light: '#F2F3F5',
+            success: '#00B42A',
+            warning: '#FF7D00',
+            danger: '#F53F3F',
+            info: '#86909C',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .terminal-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .glass-effect {
+        backdrop-filter: blur(10px);
+        background-color: rgba(255, 255, 255, 0.8);
+      }
+      .scrollbar-thin {
+        scrollbar-width: thin;
+      }
+      .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+      }
+      .scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5);
+        border-radius: 3px;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-terminal text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold text-primary">NodeJS Shell</h1>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <i class="fa fa-moon-o text-gray-600"></i>
+        </button>
+        <button id="help-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <i class="fa fa-question-circle text-gray-600"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="flex-1 container mx-auto px-4 py-6">
+    <!-- 统计卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-105 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm">系统负载</p>
+            <h3 class="text-2xl font-bold mt-1">
+              <span id="cpu-load">0%</span>
+            </h3>
+          </div>
+          <div class="bg-blue-100 p-3 rounded-lg">
+            <i class="fa fa-microchip text-primary text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="cpu-bar" class="h-full bg-primary rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-105 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm">内存使用</p>
+            <h3 class="text-2xl font-bold mt-1">
+              <span id="mem-usage">0 MB</span>
+            </h3>
+          </div>
+          <div class="bg-purple-100 p-3 rounded-lg">
+            <i class="fa fa-memory text-accent text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="mem-bar" class="h-full bg-accent rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-105 transition-all duration-300">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-500 text-sm">存储</p>
+            <h3 class="text-2xl font-bold mt-1">
+              <span id="disk-usage">0 GB</span>
+            </h3>
+          </div>
+          <div class="bg-green-100 p-3 rounded-lg">
+            <i class="fa fa-hdd-o text-success text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="disk-bar" class="h-full bg-success rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 主要功能区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 终端面板 -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+          <div class="bg-gray-800 text-white p-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <div class="flex space-x-1">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+              </div>
+              <span class="ml-2 font-medium">Bash 终端</span>
+            </div>
+            <div class="flex space-x-2">
+              <button id="clear-terminal" class="text-gray-400 hover:text-white transition-colors">
+                <i class="fa fa-trash-o"></i>
+              </button>
+              <button id="maximize-terminal" class="text-gray-400 hover:text-white transition-colors">
+                <i class="fa fa-expand"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div id="terminal-output" class="h-80 bg-gray-900 text-gray-200 p-4 overflow-y-auto scrollbar-thin">
+            <div class="text-gray-400 mb-2">
+              <span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># <span class="text-white">date</span>
+            </div>
+            <div class="mb-4">
+              ${new Date().toLocaleString()}
+            </div>
+            <div class="text-gray-400">
+              <span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># 
+            </div>
+          </div>
+          
+          <div class="p-4 bg-gray-800">
+            <div class="flex space-x-2">
+              <div class="text-green-400 font-medium">root@nodejs-shell:~#</div>
+              <div class="flex-1">
+                <input 
+                  type="text" 
+                  id="terminal-input" 
+                  placeholder="输入命令..." 
+                  class="w-full bg-gray-700 text-white border-none focus:ring-2 focus:ring-primary rounded-md px-3 py-2 outline-none"
+                >
+              </div>
+              <button id="run-command" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md transition-colors">
+                <i class="fa fa-play mr-1"></i> 执行
+              </button>
+            </div>
+            
+            <div class="mt-3 flex items-center space-x-2">
+              <label class="flex items-center space-x-1 text-gray-300">
+                <input type="checkbox" id="admin-checkbox" class="rounded text-primary focus:ring-primary">
+                <span>管理员模式</span>
+              </label>
+              <div id="admin-password-container" class="hidden flex-1">
+                <input 
+                  type="password" 
+                  id="admin-password" 
+                  placeholder="输入管理员密码" 
+                  class="w-full bg-gray-700 text-white border-none focus:ring-2 focus:ring-primary rounded-md px-3 py-1 outline-none text-sm"
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 常用命令快捷方式 -->
+        <div class="bg-white rounded-xl shadow-md p-4">
+          <h3 class="font-bold text-lg mb-3 flex items-center">
+            <i class="fa fa-bolt text-primary mr-2"></i> 常用命令
+          </h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="ls -la">
+              <i class="fa fa-list-ul mr-1"></i> 列出文件
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="df -h">
+              <i class="fa fa-hdd-o mr-1"></i> 磁盘空间
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="free -m">
+              <i class="fa fa-memory mr-1"></i> 内存使用
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="ps aux">
+              <i class="fa fa-tasks mr-1"></i> 进程列表
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="netstat -tuln">
+              <i class="fa fa-wifi mr-1"></i> 网络连接
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="uptime">
+              <i class="fa fa-clock-o mr-1"></i> 运行时间
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="top">
+              <i class="fa fa-line-chart mr-1"></i> 系统监控
+            </button>
+            <button class="command-shortcut bg-gray-100 hover:bg-gray-200 p-2 rounded-md transition-colors text-sm flex items-center justify-center" data-command="hostname -I">
+              <i class="fa fa-server mr-1"></i> IP 地址
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 文件管理面板 -->
+      <div class="space-y-6">
+        <!-- 文件浏览器 -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+          <div class="bg-primary text-white p-3 flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="fa fa-folder-open mr-2"></i>
+              <h3 class="font-medium">文件管理</h3>
+            </div>
+            <div class="flex space-x-2">
+              <button id="refresh-files" class="text-white hover:text-gray-200 transition-colors">
+                <i class="fa fa-refresh"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 当前路径 -->
+          <div class="p-3 bg-gray-50 border-b">
+            <div class="flex items-center text-sm">
+              <i class="fa fa-map-marker text-gray-400 mr-2"></i>
+              <span id="current-path" class="text-gray-700">/</span>
+            </div>
+          </div>
+          
+          <!-- 文件列表 -->
+          <div id="file-list-container" class="h-96 overflow-y-auto scrollbar-thin">
+            <div class="p-4 flex items-center justify-center text-gray-500">
+              <i class="fa fa-spinner fa-spin mr-2"></i>
+              <span>加载文件列表...</span>
+            </div>
+          </div>
+          
+          <!-- 文件操作 -->
+          <div class="p-3 bg-gray-50 border-t">
+            <div class="flex justify-between items-center">
+              <div class="flex space-x-2">
+                <button id="upload-file-btn" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-md transition-colors text-sm flex items-center">
+                  <i class="fa fa-upload mr-1"></i> 上传
+                </button>
+                <button id="new-folder-btn" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-md transition-colors text-sm flex items-center">
+                  <i class="fa fa-folder-plus mr-1"></i> 新建
+                </button>
+              </div>
+              <div class="text-xs text-gray-500">
+                <span id="file-count">0</span> 个文件
+              </div>
+            </div>
+            
+            <!-- 上传文件表单 -->
+            <div id="upload-file-form" class="mt-3 hidden">
+              <form id="upload-form" enctype="multipart/form-data">
+                <div class="flex space-x-2">
+                  <input 
+                    type="file" 
+                    id="file-upload-input" 
+                    class="hidden" 
+                    multiple
+                  >
+                  <input 
+                    type="text" 
+                    id="file-upload-display" 
+                    placeholder="选择文件..." 
+                    class="flex-1 bg-white border border-gray-300 rounded-md px-3 py-1 outline-none text-sm cursor-pointer"
+                    readonly
+                  >
+                  <button type="button" id="select-files-btn" class="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded-md transition-colors text-sm">
+                    浏览
+                  </button>
+                  <button type="submit" class="bg-success hover:bg-success/90 text-white px-3 py-1 rounded-md transition-colors text-sm">
+                    上传
+                  </button>
+                </div>
+                <div class="mt-2">
+                  <input 
+                    type="password" 
+                    id="upload-password" 
+                    placeholder="输入上传密码" 
+                    class="w-full bg-white border border-gray-300 rounded-md px-3 py-1 outline-none text-sm"
+                  >
+                </div>
+              </form>
+            </div>
+            
+            <!-- 新建文件夹表单 -->
+            <div id="new-folder-form" class="mt-3 hidden">
+              <form id="folder-form">
+                <div class="flex space-x-2">
+                  <input 
+                    type="text" 
+                    id="folder-name" 
+                    placeholder="文件夹名称" 
+                    class="flex-1 bg-white border border-gray-300 rounded-md px-3 py-1 outline-none text-sm"
+                  >
+                  <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded-md transition-colors text-sm">
+                    创建
+                  </button>
+                </div>
+                <div class="mt-2">
+                  <input 
+                    type="password" 
+                    id="folder-password" 
+                    placeholder="输入管理员密码" 
+                    class="w-full bg-white border border-gray-300 rounded-md px-3 py-1 outline-none text-sm"
+                  >
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 系统信息 -->
+        <div class="bg-white rounded-xl shadow-md p-4">
+          <h3 class="font-bold text-lg mb-3 flex items-center">
+            <i class="fa fa-info-circle text-primary mr-2"></i> 系统信息
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <p class="text-sm text-gray-500">主机名</p>
+              <p id="system-hostname" class="font-medium">loading...</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">操作系统</p>
+              <p id="system-os" class="font-medium">loading...</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">IP 地址</p>
+              <p id="system-ip" class="font-medium">loading...</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">运行时间</p>
+              <p id="system-uptime" class="font-medium">loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-white border-t mt-8 py-4">
+    <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+      <p>NodeJS Shell &copy; 2023 | <a href="#" class="text-primary hover:underline">查看文档</a></p>
+    </div>
+  </footer>
+
+  <!-- 模态框 -->
+  <div id="modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" id="modal-content">
+      <div class="p-4 border-b">
+        <h3 id="modal-title" class="text-lg font-bold">操作确认</h3>
+      </div>
+      <div id="modal-body" class="p-4">
+        <p>您确定要执行此操作吗？</p>
+      </div>
+      <div class="p-4 border-t flex justify-end space-x-3">
+        <button id="modal-cancel" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
+          取消
+        </button>
+        <button id="modal-confirm" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors">
+          确认
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 模拟系统数据
+    const mockSystemData = {
+      cpuLoad: 25,
+      memUsage: 1500,
+      memTotal: 4096,
+      diskUsage: 5.8,
+      diskTotal: 20,
+      hostname: "nodejs-server",
+      os: "Linux 5.15.0-78-generic",
+      ip: "192.168.1.100",
+      uptime: "2 天 14 小时 35 分钟"
+    };
+    
+    // 模拟文件列表
+    const mockFiles = [
+      { name: "index.js", type: "file", size: "12 KB", modified: "2023-06-10 14:30" },
+      { name: "package.json", type: "file", size: "3 KB", modified: "2023-06-09 09:15" },
+      { name: "logs", type: "folder", size: "-", modified: "2023-06-10 16:45" },
+      { name: "uploads", type: "folder", size: "-", modified: "2023-06-08 11:20" },
+      { name: "README.md", type: "file", size: "2 KB", modified: "2023-06-05 15:00" },
+      { name: "data.json", type: "file", size: "8 KB", modified: "2023-06-07 10:45" },
+      { name: "public", type: "folder", size: "-", modified: "2023-06-03 08:30" },
+      { name: "node_modules", type: "folder", size: "-", modified: "2023-06-01 17:20" },
+    ];
+    
+    // DOM 元素
+    const terminalOutput = document.getElementById('terminal-output');
+    const terminalInput = document.getElementById('terminal-input');
+    const runCommandBtn = document.getElementById('run-command');
+    const adminCheckbox = document.getElementById('admin-checkbox');
+    const adminPasswordContainer = document.getElementById('admin-password-container');
+    const adminPassword = document.getElementById('admin-password');
+    const clearTerminalBtn = document.getElementById('clear-terminal');
+    const commandShortcuts = document.querySelectorAll('.command-shortcut');
+    const fileListContainer = document.getElementById('file-list-container');
+    const currentPath = document.getElementById('current-path');
+    const fileCount = document.getElementById('file-count');
+    const uploadFileBtn = document.getElementById('upload-file-btn');
+    const uploadFileForm = document.getElementById('upload-file-form');
+    const newFolderBtn = document.getElementById('new-folder-btn');
+    const newFolderForm = document.getElementById('new-folder-form');
+    const fileUploadInput = document.getElementById('file-upload-input');
+    const fileUploadDisplay = document.getElementById('file-upload-display');
+    const selectFilesBtn = document.getElementById('select-files-btn');
+    const uploadForm = document.getElementById('upload-form');
+    const folderForm = document.getElementById('folder-form');
+    const folderName = document.getElementById('folder-name');
+    const refreshFilesBtn = document.getElementById('refresh-files');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // 当前工作路径
+    let currentDir = '';
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 加载系统数据
+      loadSystemData();
+      
+      // 加载文件列表
+      loadFileList();
+      
+      // 事件监听器
+      runCommandBtn.addEventListener('click', executeCommand);
+      terminalInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') executeCommand();
+      });
+      adminCheckbox.addEventListener('change', toggleAdminMode);
+      clearTerminalBtn.addEventListener('click', clearTerminal);
+      commandShortcuts.forEach(btn => {
+        btn.addEventListener('click', () => {
+          terminalInput.value = btn.dataset.command;
+          executeCommand();
+        });
+      });
+      uploadFileBtn.addEventListener('click', () => {
+        uploadFileForm.classList.toggle('hidden');
+        newFolderForm.classList.add('hidden');
+      });
+      newFolderBtn.addEventListener('click', () => {
+        newFolderForm.classList.toggle('hidden');
+        uploadFileForm.classList.add('hidden');
+      });
+      selectFilesBtn.addEventListener('click', () => {
+        fileUploadInput.click();
+      });
+      fileUploadInput.addEventListener('change', () => {
+        if (fileUploadInput.files.length === 1) {
+          fileUploadDisplay.value = fileUploadInput.files[0].name;
+        } else if (fileUploadInput.files.length > 1) {
+          fileUploadDisplay.value = `${fileUploadInput.files.length} 个文件`;
+        }
+      });
+      uploadForm.addEventListener('submit', uploadFiles);
+      folderForm.addEventListener('submit', createFolder);
+      refreshFilesBtn.addEventListener('click', loadFileList);
+      modalCancel.addEventListener('click', closeModal);
+      modalConfirm.addEventListener('click', confirmModalAction);
+      themeToggle.addEventListener('click', toggleTheme);
+    });
+    
+    // 加载系统数据
+    function loadSystemData() {
+      // 在实际应用中，这些数据会通过 API 获取
+      document.getElementById('cpu-load').textContent = `${mockSystemData.cpuLoad}%`;
+      document.getElementById('mem-usage').textContent = `${mockSystemData.memUsage} MB / ${mockSystemData.memTotal} MB`;
+      document.getElementById('disk-usage').textContent = `${mockSystemData.diskUsage} GB / ${mockSystemData.diskTotal} GB`;
+      document.getElementById('system-hostname').textContent = mockSystemData.hostname;
+      document.getElementById('system-os').textContent = mockSystemData.os;
+      document.getElementById('system-ip').textContent = mockSystemData.ip;
+      document.getElementById('system-uptime').textContent = mockSystemData.uptime;
+      
+      // 更新进度条
+      document.getElementById('cpu-bar').style.width = `${mockSystemData.cpuLoad}%`;
+      document.getElementById('mem-bar').style.width = `${(mockSystemData.memUsage / mockSystemData.memTotal) * 100}%`;
+      document.getElementById('disk-bar').style.width = `${(mockSystemData.diskUsage / mockSystemData.diskTotal) * 100}%`;
+    }
+    
+    // 加载文件列表
+    function loadFileList() {
+      // 在实际应用中，这里会调用 /file API
+      fileListContainer.innerHTML = `
+        <div class="p-4 flex items-center justify-center text-gray-500">
+          <i class="fa fa-spinner fa-spin mr-2"></i>
+          <span>加载文件列表...</span>
+        </div>
+      `;
+      
+      // 模拟 API 请求延迟
+      setTimeout(() => {
+        renderFileList(mockFiles);
+      }, 500);
+    }
+    
+    // 渲染文件列表
+    function renderFileList(files) {
+      if (!files || files.length === 0) {
+        fileListContainer.innerHTML = `
+          <div class="p-4 flex items-center justify-center text-gray-500">
+            <i class="fa fa-folder-open-o mr-2"></i>
+            <span>此文件夹为空</span>
+          </div>
+        `;
+        fileCount.textContent = "0";
+        return;
+      }
+      
+      // 按类型分组：文件夹在前，文件在后
+      const folders = files.filter(item => item.type === 'folder');
+      const fileItems = files.filter(item => item.type === 'file');
+      
+      // 排序
+      folders.sort((a, b) => a.name.localeCompare(b.name));
+      fileItems.sort((a, b) => a.name.localeCompare(b.name));
+      
+      // 合并并渲染
+      const allItems = [...folders, ...fileItems];
+      
+      let html = '';
+      allItems.forEach(item => {
+        const icon = item.type === 'folder' 
+          ? '<i class="fa fa-folder text-yellow-500 mr-2"></i>' 
+          : '<i class="fa fa-file-o text-gray-400 mr-2"></i>';
+        
+        html += `
+          <div class="file-item p-3 hover:bg-gray-50 transition-colors border-b last:border-b-0 flex items-center justify-between cursor-pointer" data-name="${item.name}" data-type="${item.type}">
+            <div class="flex items-center">
+              ${icon}
+              <span class="font-medium">${item.name}</span>
+            </div>
+            <div class="flex items-center space-x-4 text-sm text-gray-500">
+              <span>${item.size}</span>
+              <span>${item.modified}</span>
+              <div class="file-actions opacity-0 hover:opacity-100 transition-opacity flex space-x-2">
+                ${item.type === 'folder' ? '' : `
+                  <button class="text-primary hover:text-primary/80 download-file" data-name="${item.name}">
+                    <i class="fa fa-download"></i>
+                  </button>
+                `}
+                <button class="text-danger hover:text-danger/80 delete-item" data-name="${item.name}" data-type="${item.type}">
+                  <i class="fa fa-trash-o"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      fileListContainer.innerHTML = html;
+      fileCount.textContent = allItems.length;
+      
+      // 添加点击事件
+      document.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const name = item.dataset.name;
+          const type = item.dataset.type;
+          
+          if (type === 'folder') {
+            // 导航到子文件夹
+            currentDir = currentDir ? `${currentDir}/${name}` : name;
+            currentPath.textContent = `/${currentDir}`;
+            loadFileList();
+          }
+        });
+      });
+      
+      // 添加下载和删除事件
+      document.querySelectorAll('.download-file').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fileName = btn.dataset.name;
+          // 在实际应用中，这里会调用下载 API
+          alert(`下载文件: ${fileName}`);
+        });
+      });
+      
+      document.querySelectorAll('.delete-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const name = btn.dataset.name;
+          const type = btn.dataset.type;
+          
+          modalTitle.textContent = type === 'folder' ? '删除文件夹' : '删除文件';
+          modalBody.innerHTML = `
+            <p class="text-gray-700">您确定要删除 ${type === 'folder' ? '文件夹' : '文件'} <span class="font-medium">${name}</span> 吗？</p>
+            <p class="text-sm text-red-500 mt-2">此操作不可撤销！</p>
+          `;
+          
+          // 设置确认按钮的回调
+          modalConfirm.onclick = () => {
+            // 在实际应用中，这里会调用删除 API
+            alert(`删除 ${type === 'folder' ? '文件夹' : '文件'}: ${name}`);
+            loadFileList();
+            closeModal();
+          };
+          
+          openModal();
+        });
+      });
+    }
+    
+    // 执行命令
+    function executeCommand() {
+      const command = terminalInput.value.trim();
+      if (!command) return;
+      
+      // 添加命令到终端
+      const commandElement = document.createElement('div');
+      commandElement.className = 'text-gray-400 mb-2';
+      commandElement.innerHTML = `<span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># <span class="text-white">${command}</span>`;
+      terminalOutput.appendChild(commandElement);
+      
+      // 清空输入框
+      terminalInput.value = '';
+      
+      // 在实际应用中，这里会调用 /bash API
+      const outputElement = document.createElement('div');
+      outputElement.className = 'mb-4';
+      
+      // 模拟命令执行
+      if (command === 'ls' || command === 'ls -la') {
+        // 显示文件列表
+        outputElement.innerHTML = mockFiles.map(file => {
+          const icon = file.type === 'folder' ? '📁' : '📄';
+          return `${icon} ${file.name}${file.type === 'file' ? ` (${file.size})` : ''}`;
+        }).join('\n');
+      } else if (command === 'df -h') {
+        // 显示磁盘空间
+        outputElement.innerHTML = `Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda1        20G   5.8G   14G  30% /`;
+      } else if (command === 'free -m') {
+        // 显示内存使用
+        outputElement.innerHTML = `              total        used        free      shared  buff/cache   available\nMem:           4096        1500        1200         200        1396        2500\nSwap:          2048           0        2048`;
+      } else if (command === 'ps aux') {
+        // 显示进程列表
+        outputElement.innerHTML = `USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND\nroot         1  0.0  0.1  12568  3200 ?        Ss   Jun01   0:04 /sbin/init\nroot         2  0.0  0.0      0     0 ?        S    Jun01   0:00 [kthreadd]\n...`;
+      } else if (command === 'hostname -I') {
+        // 显示 IP 地址
+        outputElement.innerHTML = mockSystemData.ip;
+      } else if (command === 'uptime') {
+        // 显示运行时间
+        outputElement.innerHTML = mockSystemData.uptime;
+      } else {
+        // 未知命令
+        outputElement.innerHTML = `bash: ${command}: command not found`;
+      }
+      
+      terminalOutput.appendChild(outputElement);
+      
+      // 添加新的命令提示符
+      const promptElement = document.createElement('div');
+      promptElement.className = 'text-gray-400';
+      promptElement.innerHTML = `<span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># `;
+      terminalOutput.appendChild(promptElement);
+      
+      // 滚动到底部
+      terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+    
+    // 切换管理员模式
+    function toggleAdminMode() {
+      adminPasswordContainer.classList.toggle('hidden', !adminCheckbox.checked);
+    }
+    
+    // 清空终端
+    function clearTerminal() {
+      terminalOutput.innerHTML = `
+        <div class="text-gray-400">
+          <span class="text-green-400">root@nodejs-shell</span>:<span class="text-blue-400">~</span># 
+        </div>
+      `;
+    }
+    
+    // 上传文件
+    function uploadFiles(e) {
+      e.preventDefault();
+      
+      const password = document.getElementById('upload-password').value.trim();
+      if (!password) {
+        alert('请输入上传密码');
+        return;
+      }
+      
+      if (!fileUploadInput.files.length) {
+        alert('请选择要上传的文件');
+        return;
+      }
+      
+      // 在实际应用中，这里会调用上传 API
+      alert(`上传 ${fileUploadInput.files.length} 个文件...`);
+      
+      // 重置表单
+      uploadFileForm.classList.add('hidden');
+      fileUploadInput.value = '';
+      fileUploadDisplay.value = '';
+      document.getElementById('upload-password').value = '';
+      
+      // 刷新文件列表
+      loadFileList();
+    }
+    
+    // 创建文件夹
+    function createFolder(e) {
+      e.preventDefault();
+      
+      const name = folderName.value.trim();
+      const password = document.getElementById('folder-password').value.trim();
+      
+      if (!name) {
+        alert('请输入文件夹名称');
+        return;
+      }
+      
+      if (!password) {
+        alert('请输入管理员密码');
+        return;
+      }
+      
+      // 在实际应用中，这里会调用创建文件夹 API
+      alert(`创建文件夹: ${name}`);
+      
+      // 重置表单
+      newFolderForm.classList.add('hidden');
+      folderName.value = '';
+      document.getElementById('folder-password').value = '';
+      
+      // 刷新文件列表
+      loadFileList();
+    }
+    
+    // 打开模态框
+    function openModal() {
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+      }, 10);
+    }
+    
+    // 关闭模态框
+    function closeModal() {
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 200);
+    }
+    
+    // 确认模态框操作
+    function confirmModalAction() {
+      // 操作将在点击按钮时设置
+      closeModal();
+    }
+    
+    // 切换主题
+    function toggleTheme() {
+      const icon = themeToggle.querySelector('i');
+      if (icon.classList.contains('fa-moon-o')) {
+        icon.classList.remove('fa-moon-o');
+        icon.classList.add('fa-sun-o');
+        document.body.classList.add('dark-mode');
+        // 在实际应用中，这里会切换深色主题
+      } else {
+        icon.classList.remove('fa-sun-o');
+        icon.classList.add('fa-moon-o');
+        document.body.classList.remove('dark-mode');
+        // 在实际应用中，这里会切换浅色主题
+      }
+    }
+  </script>
+</body>
+</html>
