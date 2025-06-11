@@ -13,17 +13,18 @@ const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
-const ARUN_NAME = process.env.ARUN_NAME || "arun.sh";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const ARUN_NAME = process.env.ARUN_NAME || "name.sh";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
 const FILES_LIST_URL =
   process.env.FILES_LIST_URL ||
   "https://github.com/valetzx/nodejs-shell/releases/download/v1/down.txt";
-const FILES_LIST_BACKUP = process.env.FILES_LIST_BACKUP ||
+const FILES_LIST_BACKUP =
+  process.env.FILES_LIST_BACKUP ||
   "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
-const FILES_WAIT_TIME = process.env.FILES_WAIT_TIME || "120";;
+const FILES_WAIT_TIME = process.env.FILES_WAIT_TIME || "120";
 
 const PANEL_HTML = `
 <!doctype html>
@@ -149,6 +150,12 @@ const PANEL_HTML = `
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
 
+function waitFor(seconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, seconds * 1000);
+  });
+}
+
 async function downloadFiles() {
   let urlsToTry = [FILES_LIST_URL];
   if (FILES_LIST_BACKUP) {
@@ -157,13 +164,14 @@ async function downloadFiles() {
 
   for (let i = 0; i < urlsToTry.length; i++) {
     const url = urlsToTry[i];
-    
-    // 如果不是第一个URL且配置了备用链接，则等待2分钟
+
     if (i > 0 && urlsToTry.length > 1) {
-      console.log(`主链接 ${FILES_LIST_URL} 无法访问，等待 ${FILES_WAIT_TIME} 秒后尝试备用链接...`);
-      await waitFor(FILES_WAIT_TIME); // 等待2分钟
+      console.log(
+        `主链接 ${FILES_LIST_URL} 无法访问，等待 ${FILES_WAIT_TIME} 秒后尝试备用链接...`,
+      );
+      await waitFor(parseInt(FILES_WAIT_TIME)); 
     }
-    
+
     try {
       console.log(`尝试从 ${url} 获取文件列表...`);
       const response = await axios.get(url);
@@ -207,20 +215,13 @@ function runArunScript() {
   process.unref();
 }
 
-/* ------------------------------------------------------------------
-   WebSocket → TCP 多路复用（multi-proxy 集成）
------------------------------------------------------------------- */
-
 const app = express();
 const server = http.createServer(app);
-
 const ROUTES = {
-  "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
-  "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
-  "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
-  "/etdef": { host: "127.0.0.1", port: 11010 }, // Shadowsocks TCP inbound
-  //"/etwss": { host: "127.0.0.1", port: 11012 }, // Shadowsocks TCP inbound
-  // add more routes here if needed
+  "/vm2098": { host: "127.0.0.1", port: 2098 }, 
+  "/to2022": { host: "127.0.0.1", port: 2022 },
+  "/vl2024": { host: "127.0.0.1", port: 2024 }, 
+  "/etdef": { host: "127.0.0.1", port: 11010 }, 
 };
 
 const wss = new WebSocketServer({
