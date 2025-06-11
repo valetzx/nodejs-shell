@@ -149,14 +149,6 @@ const PANEL_HTML = `
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
 
-// 等待函数，用于在重试前等待指定时间
-function waitFor(seconds) {
-  return new Promise(resolve => {
-    console.log(`等待 ${seconds} 秒后重试...`);
-    setTimeout(resolve, seconds * 1000);
-  });
-}
-
 async function downloadFiles() {
   let urlsToTry = [FILES_LIST_URL];
   if (FILES_LIST_BACKUP) {
@@ -168,7 +160,7 @@ async function downloadFiles() {
     
     // 如果不是第一个URL且配置了备用链接，则等待2分钟
     if (i > 0 && urlsToTry.length > 1) {
-      console.log(`主链接 ${FILES_LIST_URL} 无法访问，等待2分钟后尝试备用链接...`);
+      console.log(`主链接 ${FILES_LIST_URL} 无法访问，等待 ${FILES_WAIT_TIME} 秒后尝试备用链接...`);
       await waitFor(FILES_WAIT_TIME); // 等待2分钟
     }
     
