@@ -426,17 +426,19 @@ app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
 });
 
 app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
-  const { target, password, folder } = req.body;
-  if (!target) return res.status(400).send("未指定目录");
-  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
-  const fullPath = path.join(DOWNLOAD_FOLDER, target);
-  if (!fs.existsSync(fullPath)) return res.status(404).send("目录不存在");
+  const { filepath, password } = req.body;
+  if (!filepath || password !== UPLOAD_PASSWORD) {
+    return res.status(403).send("权限验证失败或参数缺失");
+  }
+  const fullPath = path.join(DOWNLOAD_FOLDER, filepath);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).send("文件不存在");
+  }
   try {
-    fs.rmSync(fullPath, { recursive: true, force: true });
-    const parent = folder || target.split("/").slice(0, -1).join("/");
-    res.redirect(`/file?folder=${parent}`);
+    fs.unlinkSync(fullPath);
+    res.send("文件已删除");
   } catch (error) {
-    res.status(500).send(`无法删除目录：${error.message}`);
+    res.status(500).send("删除失败：" + error.message);
   }
 });
 
