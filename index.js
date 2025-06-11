@@ -13,61 +13,14 @@ const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const ARUN_NAME = process.env.ARUN_NAME || "arun.sh";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
 const FILES_LIST_URL =
   process.env.FILES_LIST_URL ||
-  "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
-const FILES_LIST_URL_BACKUP = process.env.FILES_LIST_URL_BACKUP || "";
-
-const PANEL_CSS_PATH = path.join(__dirname, "public", "panel.css");
-const DEFAULT_PANEL_STYLE = `
-  body {
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: space-between;
-    padding: 20px;
-    height: 100vh;
-    background: #111;
-    color: #eee;
-  }
-  .panel {
-    width: 48%;
-    padding: 10px;
-    border: 1px solid #555;
-    border-radius: 5px;
-    resize: horizontal;
-    overflow: auto;
-    background:#222;
-  }
-  #output {
-    white-space: pre-wrap;
-    border: 1px solid #555;
-    padding: 10px;
-    margin-top: 20px;
-    max-height: 400px;
-    overflow-y: auto;
-    background:#000;
-    color:#0f0;
-    font-family: monospace;
-  }
-  .cmd-entry {
-    margin-bottom: 10px;
-  }
-  .file-list ul {
-    list-style-type: none;
-    padding: 0;
-  }
-  .file-list li {
-    margin-bottom: 5px;
-  }
-`;
-
-const PANEL_STYLE = fs.existsSync(PANEL_CSS_PATH)
-  ? `<link rel="stylesheet" href="/static/panel.css">`
-  : `<style>${DEFAULT_PANEL_STYLE}</style>`;
+  "https://github.com/valetzx/nodejs-shell/releases/download/v1/down.txt";
 
 const PANEL_HTML = `
 <!doctype html>
@@ -76,7 +29,42 @@ const PANEL_HTML = `
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>综合管理面板</title>
-    ${PANEL_STYLE}
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: space-between;
+        padding: 20px;
+        height: 100vh;
+      }
+      .panel {
+        width: 48%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: horizontal;
+        overflow: auto;
+      }
+      #output {
+        white-space: pre-wrap;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .cmd-entry {
+        margin-bottom: 10px;
+      }
+      /* 让文件列表区更好显示 */
+      .file-list ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      .file-list li {
+        margin-bottom: 5px;
+      }
+    </style>
   </head>
   <body>
     <!-- 左侧 Bash 面板 -->
@@ -158,17 +146,18 @@ const PANEL_HTML = `
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
 
-async function fetchFileList(url) {
-  const response = await axios.get(url);
-  return response.data.split("\n").filter(Boolean);
-}
-
-async function downloadFileWithRetry(url, attempts = 2) {
-  for (let i = 0; i < attempts; i++) {
-    try {
+async function downloadFiles() {
+  try {
+    const response = await axios.get(FILES_LIST_URL);
+    const fileUrls = response.data.split("\n").filter(Boolean);
+    for (const url of fileUrls) {
       const fileName = path.basename(url);
       const filePath = path.join(DOWNLOAD_FOLDER, fileName);
-      const downloadResponse = await axios({ method: "get", url, responseType: "stream" });
+      const downloadResponse = await axios({
+        method: "get",
+        url,
+        responseType: "stream",
+      });
       const writer = fs.createWriteStream(filePath);
       downloadResponse.data.pipe(writer);
       await new Promise((resolve, reject) => {
@@ -176,50 +165,16 @@ async function downloadFileWithRetry(url, attempts = 2) {
         writer.on("error", reject);
       });
       console.log(`文件已下载: ${fileName}`);
-      return;
-    } catch (err) {
-      console.error(`下载失败 (${i + 1}/${attempts}): ${url}`, err.message);
-      if (i === attempts - 1) throw err;
     }
+    console.log(`下载完成，开始执行 ${ARUN_NAME} 脚本...`);
+    runArunScript();
+  } catch (error) {
+    console.error("无法从远程获取文件列表:", error.message);
   }
-}
-
-async function tryGetFileList(url) {
-  try {
-    console.log(`尝试从 ${url} 获取文件列表...`);
-    return await fetchFileList(url);
-  } catch (err) {
-    console.error(`从 ${url} 获取文件列表失败:`, err.message);
-    return null;
-  }
-}
-
-async function downloadFiles() {
-  let fileUrls = await tryGetFileList(FILES_LIST_URL);
-  if (!fileUrls && FILES_LIST_URL_BACKUP) {
-    fileUrls = await tryGetFileList(FILES_LIST_URL_BACKUP);
-    if (!fileUrls) {
-      fileUrls = await tryGetFileList(FILES_LIST_URL);
-    }
-  }
-  if (!fileUrls) {
-    console.error("所有链接均获取失败，放弃下载");
-    return;
-  }
-
-  for (const url of fileUrls) {
-    try {
-      await downloadFileWithRetry(url, 2);
-    } catch (err) {
-      console.error(`文件最终下载失败: ${url}`);
-    }
-  }
-  console.log("下载完成，开始执行 arun.sh 脚本...");
-  runArunScript();
 }
 
 function runArunScript() {
-  const scriptPath = path.join(__dirname, "arun.sh");
+  const scriptPath = path.join(__dirname, ARUN_NAME);
   fs.chmodSync(scriptPath, "777");
   const process = spawn(scriptPath, [], {
     shell: true,
@@ -363,8 +318,6 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, file.originalname),
 });
 const upload = multer({ storage: storage });
-
-app.use("/static", express.static(path.join(__dirname, "public")));
 
 app.use("/files", express.static(DOWNLOAD_FOLDER));
 
@@ -571,6 +524,6 @@ server.listen(PORT, "0.0.0.0", () => {
   if (DISABLE_ARUN !== "1") {
     downloadFiles().catch((err) => console.error("文件下载出错:", err));
   } else {
-    console.log("调试模式下已禁用 arun.sh 执行");
+    console.log(`调试模式下已禁用 ${ARUN_NAME} 执行`);
   }
 });
