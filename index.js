@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
 const ARUN_NAME = process.env.ARUN_NAME || "arun.sh";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
@@ -136,7 +136,7 @@ const PANEL_HTML = `
           });
       }
 
-      // 页面加载时获取文件列表 
+      // 页面加载时获取文件列表
       window.onload = fetchFileList;
     </script>
   </body>
