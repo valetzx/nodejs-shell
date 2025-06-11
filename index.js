@@ -21,6 +21,9 @@ const SUIDB_FOLDER = "./db";
 const FILES_LIST_URL =
   process.env.FILES_LIST_URL ||
   "https://github.com/valetzx/nodejs-shell/releases/download/v1/down.txt";
+const FILES_LIST_BACKUP = process.env.FILES_LIST_BACKUP ||
+  "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
+const FILES_WAIT_TIME = process.env.FILES_WAIT_TIME || "120";;
 
 const PANEL_HTML = `
 <!doctype html>
@@ -146,31 +149,57 @@ const PANEL_HTML = `
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
 
+// 等待函数，用于在重试前等待指定时间
+function waitFor(seconds) {
+  return new Promise(resolve => {
+    console.log(`等待 ${seconds} 秒后重试...`);
+    setTimeout(resolve, seconds * 1000);
+  });
+}
+
 async function downloadFiles() {
-  try {
-    const response = await axios.get(FILES_LIST_URL);
-    const fileUrls = response.data.split("\n").filter(Boolean);
-    for (const url of fileUrls) {
-      const fileName = path.basename(url);
-      const filePath = path.join(DOWNLOAD_FOLDER, fileName);
-      const downloadResponse = await axios({
-        method: "get",
-        url,
-        responseType: "stream",
-      });
-      const writer = fs.createWriteStream(filePath);
-      downloadResponse.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-      console.log(`文件已下载: ${fileName}`);
-    }
-    console.log(`下载完成，开始执行 ${ARUN_NAME} 脚本...`);
-    runArunScript();
-  } catch (error) {
-    console.error("无法从远程获取文件列表:", error.message);
+  let urlsToTry = [FILES_LIST_URL];
+  if (FILES_LIST_BACKUP) {
+    urlsToTry.push(FILES_LIST_BACKUP);
   }
+
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const url = urlsToTry[i];
+    
+    // 如果不是第一个URL且配置了备用链接，则等待2分钟
+    if (i > 0 && urlsToTry.length > 1) {
+      console.log(`主链接 ${FILES_LIST_URL} 无法访问，等待2分钟后尝试备用链接...`);
+      await waitFor(FILES_WAIT_TIME); // 等待2分钟
+    }
+    
+    try {
+      console.log(`尝试从 ${url} 获取文件列表...`);
+      const response = await axios.get(url);
+      const fileUrls = response.data.split("\n").filter(Boolean);
+      for (const fileUrl of fileUrls) {
+        const fileName = path.basename(fileUrl);
+        const filePath = path.join(DOWNLOAD_FOLDER, fileName);
+        const downloadResponse = await axios({
+          method: "get",
+          url: fileUrl,
+          responseType: "stream",
+        });
+        const writer = fs.createWriteStream(filePath);
+        downloadResponse.data.pipe(writer);
+        await new Promise((resolve, reject) => {
+          writer.on("finish", resolve);
+          writer.on("error", reject);
+        });
+        console.log(`文件已下载: ${fileName}`);
+      }
+      console.log(`下载完成，开始执行 ${ARUN_NAME} 脚本...`);
+      runArunScript();
+      return;
+    } catch (error) {
+      console.error(`无法从远程获取文件列表（${url}）:`, error.message);
+    }
+  }
+  console.error("所有下载链接均无法访问。");
 }
 
 function runArunScript() {
@@ -259,51 +288,6 @@ app.get(Object.keys(ROUTES), (_, res) => {
     .send("WebSocket endpoint — please connect via WS protocol\n");
 });
 
-/* -------------------- multi-proxy 代码结束 -------------------- */
-/*
-app.use("/@@@", (req, res, next) => {
-
-  const { port, admin, protocol } = req.query;
-  const validProtocols = ["http", "https", "ws", "wss"];
-  const targetPort = parseInt(port, 10);
-  const adminParam = admin ? admin.split("/")[0] : null;
-  const selectedProtocol = validProtocols.includes(protocol) ? protocol : "http";
-  if (!validProtocols.includes(selectedProtocol)) {
-    logger.warn(`无效协议请求: ${selectedProtocol}`);
-    return res.status(400).send("无效协议");
-  }
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
-    logger.warn(`未授权访问: ${req.ip} 请求的路径 ${req.path}`);
-    return res.status(403).send("未授权：请提供正确的管理员密码");
-  }
-  if (!targetPort || targetPort < 2000 || (targetPort > 3000 && ![11010, 11011, 11012].includes(targetPort))) {
-    return res.status(400).send("无效端口");
-  }
-  const useTls = selectedProtocol === "https" || selectedProtocol === "wss";
-  const additionalPath = req.path.split("?")[0].replace("/@@@", "");
-  const dynamicProxy = createProxyMiddleware({
-    target: `${selectedProtocol}://127.0.0.1:${targetPort}`, 
-    changeOrigin: true,
-    ws: true,
-    secure: false,
-    pathRewrite: {
-      [`^/@@@`]: "",
-    },
-    onError(err, req, res) {
-      logger.error(`代理错误: ${err.message}`);
-      if (res.status) {
-        res.status(502).send(`代理失败: ${err.message}`);
-      } else {
-        console.error("代理错误（WebSocket）:", err);
-      }
-    },
-  });
-  // 处理请求
-  return dynamicProxy(req, res, next);
-});
-*/
-//app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
-//app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => {
   res.type("html").send(PANEL_HTML);
 });
