@@ -30,8 +30,8 @@
       <div class="flex-1 flex flex-col">
         <div class="bg-[#1e1e1e] rounded-xl shadow-xl p-4 flex flex-col flex-1 resize-y">
           <div class="mb-4 flex flex-wrap items-center gap-3">
-            <label>管理员</label>
-            <input type="password" id="admin" placeholder="密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+            <label>管理员密码</label>
+            <input type="password" id="admin" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
           </div>
 
           <div id="output" class="terminal-output bg-black p-4 rounded flex-1 min-h-[300px] max-h-[600px] overflow-y-auto mb-4">
@@ -50,10 +50,9 @@
       <!-- 文件管理器 -->
       <div class="flex-1 bg-gray-800 rounded-xl shadow-lg p-4">
         <div class="mb-4">
-          <h2 class="text-lg font-semibold text-white">文件管理器</h2>
           <div class="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2">
             <div class="flex items-center gap-2">
-              <label class="text-sm text-gray-400">统一密码：</label>
+              <label class="text-sm text-gray-400">文件密码：</label>
               <input type="password" id="unipass" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
             </div>
             <form id="uploadForm" enctype="multipart/form-data" onsubmit="return uploadFile(event)" class="flex items-center gap-2">
@@ -65,10 +64,6 @@
         <div id="file-list" class="space-y-4 text-sm"></div>
       </div>
     </div>
-
-    <footer class="mt-8 text-center text-gray-500 text-sm">
-      <p>© 2025 服务器终端管理 | 安全连接</p>
-    </footer>
   </div>
 
   <script>
