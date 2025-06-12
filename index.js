@@ -140,7 +140,7 @@ const PANEL_HTML = `
           });
       }
 
-      // 页面加载时获取文件列表
+      // 页面加载时获取文件列表 
       window.onload = fetchFileList;
     </script>
   </body>
