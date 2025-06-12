@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>终端管理面板</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    .terminal-output {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .prompt { color: #3e90f0; }
+    .command { color: #c5c5c5; }
+    .output { color: #d4d4d4; white-space: pre-wrap; }
+    .error { color: #f48771; }
+    .resize-y { resize: vertical; overflow: auto; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen p-4">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-6 text-center">
+      <h1 class="text-2xl font-bold text-cyan-400">服务器终端管理</h1>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Bash 面板 -->
+      <div class="flex-1 flex flex-col">
+        <div class="bg-[#1e1e1e] rounded-xl shadow-xl p-4 flex flex-col flex-1 resize-y">
+          <div class="mb-4 flex flex-wrap items-center gap-3">
+            <label>管理员密码</label>
+            <input type="password" id="admin" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+          </div>
+
+          <div id="output" class="terminal-output bg-black p-4 rounded flex-1 min-h-[300px] max-h-[600px] overflow-y-auto mb-4">
+            <div class="output"><span class="prompt">$</span> <span class="text-gray-400">欢迎使用服务器终端面板</span></div>
+          </div>
+
+          <div class="flex items-center bg-gray-800 px-3 py-2 rounded gap-2">
+            <button onclick="runCommand(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm">RE</button>
+            <span class="prompt">$</span>
+            <input type="text" id="cmd" class="flex-1 bg-transparent text-white ml-2" placeholder="输入命令..." autocomplete="off" autofocus>
+            <button onclick="runCommand(false)" class="bg-cyan-600 text-white px-4 py-1 ml-1 rounded">执行</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文件管理器 -->
+      <div class="flex-1 bg-gray-800 rounded-xl shadow-lg p-4">
+        <div class="mb-4">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-gray-400">文件密码：</label>
+              <input type="password" id="unipass" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+            </div>
+            <form id="uploadForm" enctype="multipart/form-data" onsubmit="return uploadFile(event)" class="flex items-center gap-2">
+              <input type="file" id="uploadInput" name="file" required class="text-sm text-white" />
+              <button class="bg-cyan-600 text-white px-3 py-1 rounded hover:bg-cyan-700 text-sm">上传</button>
+            </form>
+          </div>
+        </div>
+        <div id="file-list" class="space-y-4 text-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let commandHistory = [];
+    let historyIndex = -1;
+    let currentFolder = "";
+
+    function runCommand(useRe) {
+      const admin = document.getElementById("admin").value.trim();
+      const re = useRe ? "&re=1" : "";
+      let command = document.getElementById("cmd").value.trim();
+      if (!command) return;
+
+      commandHistory.push(command);
+      historyIndex = commandHistory.length;
+
+      const output = document.getElementById("output");
+      const cmdLine = document.createElement("div");
+      cmdLine.className = "output";
+      cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command">${command}</span>`;
+      output.appendChild(cmdLine);
+
+      const processing = document.createElement("div");
+      processing.className = "output text-gray-500";
+      processing.innerHTML = '<span class="prompt">></span> 执行中...';
+      output.appendChild(processing);
+      output.scrollTop = output.scrollHeight;
+
+      fetch('/bash/' + encodeURIComponent("date && " + command) + '?admin=' + admin + re)
+        .then(res => res.text())
+        .then(data => {
+          output.removeChild(processing);
+          const result = document.createElement("div");
+          result.className = "output";
+          result.innerHTML = `<span class="prompt">></span> ${data}`;
+          output.appendChild(result);
+          output.scrollTop = output.scrollHeight;
+          document.getElementById("cmd").value = "";
+        })
+        .catch(err => {
+          output.removeChild(processing);
+          const error = document.createElement("div");
+          error.className = "output error";
+          error.innerHTML = `<span class="prompt">!</span> 错误: ${err.message}`;
+          output.appendChild(error);
+          output.scrollTop = output.scrollHeight;
+        });
+    }
+
+    document.getElementById("cmd").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") runCommand(false);
+      else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          historyIndex--;
+          this.value = commandHistory[historyIndex];
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          this.value = commandHistory[historyIndex];
+        } else {
+          historyIndex = commandHistory.length;
+          this.value = "";
+        }
+      }
+    });
+
+    async function uploadFile(event) {
+      event.preventDefault();
+      const pwd = document.getElementById("unipass").value;
+      const fileInput = document.getElementById("uploadInput");
+      if (!pwd || fileInput.files.length === 0) return alert("请选择文件并输入密码");
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("password", pwd);
+      formData.append("folder", currentFolder);
+
+      const res = await fetch("/file", { method: "POST", body: formData });
+      if (res.ok) {
+        alert("上传成功");
+        fileInput.value = "";
+        fetchFileList(currentFolder);
+      } else {
+        const text = await res.text();
+        alert("上传失败: " + text);
+      }
+    }
+
+    async function deleteFile(filepath) {
+      const pwd = document.getElementById("unipass").value;
+      if (!pwd) return alert("请输入密码");
+      if (!confirm(`确定要删除文件 ${filepath} 吗？`)) return;
+
+      const formData = new URLSearchParams();
+      formData.append("filepath", filepath);
+      formData.append("password", pwd);
+
+      const res = await fetch("/rmdir", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString()
+      });
+
+      if (res.ok) {
+        alert("已删除");
+        fetchFileList(currentFolder);
+      } else {
+        const text = await res.text();
+        alert("删除失败: " + text);
+      }
+    }
+
+    async function fetchFileList(folder = "") {
+      currentFolder = folder;
+      const container = document.getElementById("file-list");
+      container.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
+
+      try {
+        const res = await fetch(`/api/files?folder=${encodeURIComponent(folder)}`);
+        const data = await res.json();
+        const parent = folder.split("/").slice(0, -1).join("/");
+
+        const upButton = folder ? `<button onclick=\"fetchFileList('${parent}')\" class=\"text-cyan-400 hover:underline mb-2\">⬅ 返回上一级</button>` : "";
+
+        const folders = data.folders.map(f => `
+          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600">
+            <div class="flex items-center space-x-2">
+              <span class="text-yellow-300">📁</span>
+              <button onclick=\"fetchFileList('${f.path}')\">${f.name}</button>
+            </div>
+          </div>`).join("");
+
+        const files = data.files.map(f => `
+          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600">
+            <div class="flex items-center space-x-2">
+              <a href="/files/${f.path}" download class="text-blue-300 hover:underline">${f.name}</a>
+            </div>
+            <button onclick=\"deleteFile('${f.path}')\" class=\"text-red-400 hover:text-red-300\">删除</button>
+          </div>`).join("");
+
+        container.innerHTML = `${upButton}<div class="space-y-2">${folders}${files}</div>`;
+      } catch (err) {
+        container.innerHTML = `<div class="text-red-400">加载失败: ${err.message}</div>`;
+      }
+    }
+
+    window.onload = () => {
+      fetchFileList();
+      document.getElementById("cmd").focus();
+    }
+  </script>
+</body>
+</html>

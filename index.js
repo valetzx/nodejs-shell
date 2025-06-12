@@ -13,13 +13,18 @@ const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
 const UPLOAD_PASSWORD = process.env.UPLOAD_PASSWORD || "passwd";
-const DISABLE_ARUN = process.env.DISABLE_ARUN || "1";
+const DISABLE_ARUN = process.env.DISABLE_ARUN || "0";
+const ARUN_NAME = process.env.ARUN_NAME || "name.sh";
 const COMMAND_HISTORY = "command.json";
 const DOWNLOAD_FOLDER = "./";
 const SUIDB_FOLDER = "./db";
 const FILES_LIST_URL =
   process.env.FILES_LIST_URL ||
+  "https://github.com/valetzx/nodejs-shell/releases/download/v1/down.txt";
+const FILES_LIST_BACKUP =
+  process.env.FILES_LIST_BACKUP ||
   "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/down";
+const FILES_WAIT_TIME = process.env.FILES_WAIT_TIME || "120";
 
 const PANEL_HTML = `
 <!doctype html>
@@ -145,35 +150,60 @@ const PANEL_HTML = `
 if (!fs.existsSync(LOGS_FOLDER)) fs.mkdirSync(LOGS_FOLDER);
 if (!fs.existsSync(SUIDB_FOLDER)) fs.mkdirSync(SUIDB_FOLDER);
 
+function waitFor(seconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, seconds * 1000);
+  });
+}
+
 async function downloadFiles() {
-  try {
-    const response = await axios.get(FILES_LIST_URL);
-    const fileUrls = response.data.split("\n").filter(Boolean);
-    for (const url of fileUrls) {
-      const fileName = path.basename(url);
-      const filePath = path.join(DOWNLOAD_FOLDER, fileName);
-      const downloadResponse = await axios({
-        method: "get",
-        url,
-        responseType: "stream",
-      });
-      const writer = fs.createWriteStream(filePath);
-      downloadResponse.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
-      console.log(`文件已下载: ${fileName}`);
-    }
-    console.log("下载完成，开始执行 arun.sh 脚本...");
-    runArunScript();
-  } catch (error) {
-    console.error("无法从远程获取文件列表:", error.message);
+  let urlsToTry = [FILES_LIST_URL];
+  if (FILES_LIST_BACKUP) {
+    urlsToTry.push(FILES_LIST_BACKUP);
   }
+
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const url = urlsToTry[i];
+
+    if (i > 0 && urlsToTry.length > 1) {
+      console.log(
+        `主链接 ${FILES_LIST_URL} 无法访问，等待 ${FILES_WAIT_TIME} 秒后尝试备用链接...`,
+      );
+      await waitFor(parseInt(FILES_WAIT_TIME));
+    }
+
+    try {
+      console.log(`尝试从 ${url} 获取文件列表...`);
+      const response = await axios.get(url);
+      const fileUrls = response.data.split("\n").filter(Boolean);
+      for (const fileUrl of fileUrls) {
+        const fileName = path.basename(fileUrl);
+        const filePath = path.join(DOWNLOAD_FOLDER, fileName);
+        const downloadResponse = await axios({
+          method: "get",
+          url: fileUrl,
+          responseType: "stream",
+        });
+        const writer = fs.createWriteStream(filePath);
+        downloadResponse.data.pipe(writer);
+        await new Promise((resolve, reject) => {
+          writer.on("finish", resolve);
+          writer.on("error", reject);
+        });
+        console.log(`文件已下载: ${fileName}`);
+      }
+      console.log(`下载完成，开始执行 ${ARUN_NAME} 脚本...`);
+      runArunScript();
+      return;
+    } catch (error) {
+      console.error(`无法从远程获取文件列表（${url}）:`, error.message);
+    }
+  }
+  console.error("所有下载链接均无法访问。");
 }
 
 function runArunScript() {
-  const scriptPath = path.join(__dirname, "arun.sh");
+  const scriptPath = path.join(__dirname, ARUN_NAME);
   fs.chmodSync(scriptPath, "777");
   const process = spawn(scriptPath, [], {
     shell: true,
@@ -185,20 +215,13 @@ function runArunScript() {
   process.unref();
 }
 
-/* ------------------------------------------------------------------
-   WebSocket → TCP 多路复用（multi-proxy 集成）
------------------------------------------------------------------- */
-
 const app = express();
 const server = http.createServer(app);
-
 const ROUTES = {
-  "/vm2098": { host: "127.0.0.1", port: 2098 }, // VMess TCP inbound
-  "/to2022": { host: "127.0.0.1", port: 2022 }, // Trojan TCP inbound
-  "/vl2024": { host: "127.0.0.1", port: 2024 }, // Shadowsocks TCP inbound
-  "/etdef": { host: "127.0.0.1", port: 11010 }, // Shadowsocks TCP inbound
-  //"/etwss": { host: "127.0.0.1", port: 11012 }, // Shadowsocks TCP inbound
-  // add more routes here if needed
+  "/vm2098": { host: "127.0.0.1", port: 2098 },
+  "/to2022": { host: "127.0.0.1", port: 2022 },
+  "/vl2024": { host: "127.0.0.1", port: 2024 },
+  "/etdef": { host: "127.0.0.1", port: 11010 },
 };
 
 const wss = new WebSocketServer({
@@ -258,53 +281,8 @@ app.get(Object.keys(ROUTES), (_, res) => {
     .send("WebSocket endpoint — please connect via WS protocol\n");
 });
 
-/* -------------------- multi-proxy 代码结束 -------------------- */
-/*
-app.use("/@@@", (req, res, next) => {
-
-  const { port, admin, protocol } = req.query;
-  const validProtocols = ["http", "https", "ws", "wss"];
-  const targetPort = parseInt(port, 10);
-  const adminParam = admin ? admin.split("/")[0] : null;
-  const selectedProtocol = validProtocols.includes(protocol) ? protocol : "http";
-  if (!validProtocols.includes(selectedProtocol)) {
-    logger.warn(`无效协议请求: ${selectedProtocol}`);
-    return res.status(400).send("无效协议");
-  }
-  if (!adminParam || adminParam !== ADMIN_PASSWORD) {
-    logger.warn(`未授权访问: ${req.ip} 请求的路径 ${req.path}`);
-    return res.status(403).send("未授权：请提供正确的管理员密码");
-  }
-  if (!targetPort || targetPort < 2000 || (targetPort > 3000 && ![11010, 11011, 11012].includes(targetPort))) {
-    return res.status(400).send("无效端口");
-  }
-  const useTls = selectedProtocol === "https" || selectedProtocol === "wss";
-  const additionalPath = req.path.split("?")[0].replace("/@@@", "");
-  const dynamicProxy = createProxyMiddleware({
-    target: `${selectedProtocol}://127.0.0.1:${targetPort}`, 
-    changeOrigin: true,
-    ws: true,
-    secure: false,
-    pathRewrite: {
-      [`^/@@@`]: "",
-    },
-    onError(err, req, res) {
-      logger.error(`代理错误: ${err.message}`);
-      if (res.status) {
-        res.status(502).send(`代理失败: ${err.message}`);
-      } else {
-        console.error("代理错误（WebSocket）:", err);
-      }
-    },
-  });
-  // 处理请求
-  return dynamicProxy(req, res, next);
-});
-*/
-//app.use("/ws", createProxyMiddleware({ target: "ws://0.0.0.0:11011", changeOrigin: true, ws: true }));
-//app.use("/wss", createProxyMiddleware({ target: "wss://0.0.0.0:11012", changeOrigin: true, ws: true }));
 app.get("/@", (req, res) => {
-  res.type("html").send(PANEL_HTML);
+  res.sendFile(path.join(__dirname, "modern_panel.html"));
 });
 
 app.use(
@@ -319,7 +297,31 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.use("/files", express.static(DOWNLOAD_FOLDER));
+app.get("/api/files", (req, res) => {
+  const folder = req.query.folder || "";
+  const targetPath = path.join(DOWNLOAD_FOLDER, folder);
 
+  fs.readdir(targetPath, { withFileTypes: true }, (err, entries) => {
+    if (err) return res.status(500).json({ error: "读取失败" });
+
+    const files = entries
+      .filter((e) => e.isFile())
+      .map((e) => ({
+        name: e.name,
+        type: "file",
+        path: path.join(folder, e.name),
+      }));
+    const folders = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => ({
+        name: e.name,
+        type: "folder",
+        path: path.join(folder, e.name),
+      }));
+
+    res.json({ current: folder || "/", files, folders });
+  });
+});
 app.get("/file", (req, res) => {
   const folder = req.query.folder || "";
   const targetPath = path.join(DOWNLOAD_FOLDER, folder);
@@ -424,17 +426,19 @@ app.post("/mkdir", express.urlencoded({ extended: true }), (req, res) => {
 });
 
 app.post("/rmdir", express.urlencoded({ extended: true }), (req, res) => {
-  const { target, password, folder } = req.body;
-  if (!target) return res.status(400).send("未指定目录");
-  if (password !== UPLOAD_PASSWORD) return res.status(403).send("权限验证失败");
-  const fullPath = path.join(DOWNLOAD_FOLDER, target);
-  if (!fs.existsSync(fullPath)) return res.status(404).send("目录不存在");
+  const { filepath, password } = req.body;
+  if (!filepath || password !== UPLOAD_PASSWORD) {
+    return res.status(403).send("权限验证失败或参数缺失");
+  }
+  const fullPath = path.join(DOWNLOAD_FOLDER, filepath);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).send("文件不存在");
+  }
   try {
-    fs.rmSync(fullPath, { recursive: true, force: true });
-    const parent = folder || target.split("/").slice(0, -1).join("/");
-    res.redirect(`/file?folder=${parent}`);
+    fs.unlinkSync(fullPath);
+    res.send("文件已删除");
   } catch (error) {
-    res.status(500).send(`无法删除目录：${error.message}`);
+    res.status(500).send("删除失败：" + error.message);
   }
 });
 
@@ -523,6 +527,6 @@ server.listen(PORT, "0.0.0.0", () => {
   if (DISABLE_ARUN !== "1") {
     downloadFiles().catch((err) => console.error("文件下载出错:", err));
   } else {
-    console.log("调试模式下已禁用 arun.sh 执行");
+    console.log(`调试模式下已禁用 ${ARUN_NAME} 执行`);
   }
 });

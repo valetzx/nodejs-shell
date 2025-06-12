@@ -40,6 +40,7 @@ docker run -d -p 3000:3000 \
 | `ADMIN_PASSWORD`  | `passwd` | 管理员口令，控制 **所有** 高权限操作（Bash、/bash、WebSocket 代理、进程终止）  |
 | `UPLOAD_PASSWORD` | `passwd` | 文件上传 / 新建 / 删除 时必填的口令                                |
 | `FILES_LIST_URL`  | *(URL)*  | 若 `DISABLE_ARUN` ≠ `1`，启动时从此 URL 下载文件列表并执行 `arun.sh` |
+| `FILES_LIST_URL_BACKUP` | *(URL)* | `FILES_LIST_URL` 无法访问时使用的备用链接 |
 | `DISABLE_ARUN`    | `1`      | 设为 `1` 可跳过自动下载与脚本执行（本地调试更安全）                         |
 
 ---
@@ -49,6 +50,8 @@ docker run -d -p 3000:3000 \
 ### 1. 综合面板 `/@`
 
 打开 `http://<host>:<port>/@` 可见双列 Dashboard：
+
+如需自定义界面样式，可在 `public/panel.css` 中编写 CSS，当该文件不存在时会使用内置默认样式。
 
 ![image](https://github.com/user-attachments/assets/dad0d6e4-2956-4aa0-a956-35797706cada)
 
