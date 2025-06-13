@@ -28,8 +28,7 @@
           <div class="mb-4 flex flex-col sm:flex-row items-center gap-3">
             <label>管理员密码：</label>
             <input type="password" id="admin" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1" />
-            <button onclick="clearOutput()"
-                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">清空</button>
+            <button onclick="clearOutput()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">清空</button>
           </div>
 
           <div id="output" class="terminal-output bg-black p-4 rounded flex-1 min-h-[300px] max-h-[600px] overflow-y-auto mb-4 min-w-0">
@@ -43,6 +42,7 @@
             <input type="text" id="cmd" class="flex-1 bg-transparent text-white ml-2 min-w-0" placeholder="输入命令..." autocomplete="off" autofocus />
             <button onclick="runCommand(false)" class="bg-cyan-600 text-white px-4 py-1 ml-1 rounded">执行</button>
           </div>
+
           <!-- 下载文件输入区 -->
           <div class="flex items-center bg-gray-800 px-3 py-2 rounded gap-2 mt-2">
             <input type="text" id="downloadUrl" class="flex-1 bg-transparent text-white ml-2 min-w-0" placeholder="输入下载链接..." />
@@ -66,6 +66,7 @@
             <button type="button" onclick="fetchFileList(currentFolder)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">刷新</button>
           </form>
         </div>
+
         <!-- 文件列表 -->
         <div id="file-list" class="space-y-2 text-sm flex-1 overflow-y-auto min-w-0">
           <!-- 动态渲染 -->
@@ -79,79 +80,67 @@
     let historyIndex = -1;
     let currentFolder = "";
 
-    // 当选择文件时刷新列表以显示待上传文件
-    document.getElementById('uploadInput').addEventListener('change', function() {
-      fetchFileList(currentFolder);
-    });
+    // 选中文件后显示待上传文件
+    document.getElementById('uploadInput').addEventListener('change', () => fetchFileList(currentFolder));
 
-    /** 清空终端输出 */
+    // 清空终端输出
     function clearOutput() {
       document.getElementById('output').innerHTML = '';
     }
 
-    /** 将日志写入终端面板 */
+    // 日志输出函数
     function logToOutput(message, isError = false) {
       const output = document.getElementById('output');
       const line = document.createElement('div');
       line.className = 'output' + (isError ? ' error' : '');
-      line.innerHTML = `<span class=\"prompt\">></span> ${message}`;
+      line.innerHTML = `<span class="prompt">></span> ${message}`;
       output.appendChild(line);
       output.scrollTop = output.scrollHeight;
     }
 
+    // 执行命令
     function runCommand(useRe) {
       const admin = document.getElementById('admin').value.trim();
-      const re = useRe ? '&re=1' : '';
       const command = document.getElementById('cmd').value.trim();
       if (!command) return;
       commandHistory.push(command);
       historyIndex = commandHistory.length;
-      logToOutput(`<span class=\"command\">${command}</span>`);
-      logToOutput('执行中...', false);
-
-      fetch(`/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${re}`)
+      logToOutput(`<span class="command">${command}</span>`);
+      logToOutput('执行中...');
+      fetch(`/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${useRe ? '&re=1' : ''}`)
         .then(res => res.text())
-        .then(data => {
-          logToOutput(data.replace(/\n/g, '<br>'));
-          document.getElementById('cmd').value = '';
-        })
-        .catch(err => {
-          logToOutput(`错误: ${err.message}`, true);
-        });
+        .then(data => { logToOutput(data.replace(/\n/g,'<br>')); document.getElementById('cmd').value = ''; })
+        .catch(err => logToOutput(`错误: ${err.message}`, true));
     }
 
+    // 下载 URL 文件
     function downloadFile() {
-      const urlInput = document.getElementById('downloadUrl');
-      const url = urlInput.value.trim();
+      const url = document.getElementById('downloadUrl').value.trim();
       if (!url) return logToOutput('请输入下载链接', true);
-      document.getElementById('cmd').value = `wget ${url} --no-check-certificate`;
+      document.getElementById('cmd').value = `wget ${url}`;
       runCommand(false);
-      urlInput.value = '';
+      document.getElementById('downloadUrl').value = '';
     }
 
-    document.getElementById('cmd').addEventListener('keydown', function(e) {
+    // 命令历史导航
+    document.getElementById('cmd').addEventListener('keydown', e => {
       if (e.key === 'Enter') runCommand(false);
-      else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (historyIndex > 0) this.value = commandHistory[--historyIndex];
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (historyIndex < commandHistory.length - 1) this.value = commandHistory[++historyIndex];
-        else { historyIndex = commandHistory.length; this.value = ''; }
-      }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if(historyIndex>0) e.target.value = commandHistory[--historyIndex]; }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); if(historyIndex<commandHistory.length-1) e.target.value = commandHistory[++historyIndex]; else { historyIndex = commandHistory.length; e.target.value = ''; } }
     });
 
-    async function uploadFile(event) {
-      event.preventDefault();
+    // 上传文件
+    async function uploadFile(e) {
+      e.preventDefault();
       const pwd = document.getElementById('unipass').value;
       const fileInput = document.getElementById('uploadInput');
-      if (!pwd || fileInput.files.length === 0) return logToOutput('请选择文件并输入密码', true);
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('password', pwd);
-      formData.append('folder', currentFolder);
+      if (!pwd || !fileInput.files.length) return logToOutput('请选择文件并输入密码', true);
+      const form = new FormData();
+      form.append('file', fileInput.files[0]);
+      form.append('password', pwd);
+      form.append('folder', currentFolder);
       try {
-        const res = await fetch('/file', { method: 'POST', body: formData });
+        const res = await fetch('/file', { method: 'POST', body: form });
         const text = await res.text();
         if (res.ok) {
           logToOutput(`上传成功: ${fileInput.files[0].name}`);
@@ -166,20 +155,17 @@
       return false;
     }
 
-    async function deleteFile(filepath) {
+    // 删除文件或文件夹
+    async function deleteFile(path) {
       const pwd = document.getElementById('unipass').value;
       if (!pwd) return logToOutput('请输入密码', true);
-      if (!confirm(`确定要删除文件 ${filepath} 吗？`)) return;
-      const params = new URLSearchParams({ filepath, password: pwd });
+      if (!confirm(`确定删除 ${path} 吗？`)) return;
+      const params = new URLSearchParams({ filepath: path, password: pwd });
       try {
-        const res = await fetch('/rmdir', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString()
-        });
+        const res = await fetch('/rmdir', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: params });
         const text = await res.text();
         if (res.ok) {
-          logToOutput(`已删除: ${filepath}`);
+          logToOutput(`已删除: ${path}`);
           fetchFileList(currentFolder);
         } else {
           logToOutput(`删除失败: ${text}`, true);
@@ -189,55 +175,55 @@
       }
     }
 
+    // 获取并渲染文件列表
     async function fetchFileList(folder = "") {
       currentFolder = folder;
-      const container = document.getElementById('file-list');
-      container.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
+      const c = document.getElementById('file-list');
+      c.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
       try {
         const res = await fetch(`/api/files?folder=${encodeURIComponent(folder)}`);
         const data = await res.json();
         const parent = folder.split('/').slice(0, -1).join('/');
-
+        
         let html = `<div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">` +
-          `<div class="flex items-center space-x-2 min-w-0 flex-1 truncate">` +
-            `<span class="text-cyan-300">⬅</span>` +
-            `<button onclick="fetchFileList('${parent}')" class="truncate text-left min-w-0">上一级</button>` +
-          `</div></div>`;
-
-        const pendingFile = document.getElementById('uploadInput').files[0];
-        if (pendingFile) {
-          html += `<div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">` +
-            `<div class="flex items-center space-x-2 min-w-0 flex-1 truncate">` +
-              `<span class="text-yellow-300">⏳</span>` +
-              `<span class="truncate">${pendingFile.name} (待上传)</span>` +
-            `</div></div>`;
+                   `<div class="flex items-center space-x-2 min-w-0 flex-1 truncate">` +
+                   `<span class="text-cyan-300">⬅</span>` +
+                   `<button onclick="fetchFileList('${parent}')" class="truncate text-left min-w-0">上一级</button>` +
+                   `</div></div>`;
+        
+        const pending = document.getElementById('uploadInput').files[0];
+        if (pending) {
+          html += `<div class="bg-gray-700 p-3 rounded flex items-center hover:bg-gray-600 min-w-0">` +
+                  `<span class="text-yellow-300">⏳</span>` +
+                  `<span class="truncate ml-2">${pending.name} (待上传)</span>` +
+                  `</div>`;
         }
-
+        
         data.folders.forEach(f => {
           html += `<div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">` +
-            `<div class="flex items-center space-x-2 min-w-0 flex-1 truncate">` +
-              `<span class="text-yellow-300">📁</span>` +
-              `<button onclick="fetchFileList('${f.path}')" class="truncate text-left min-w-0">${f.name}</button>` +
-            `</div></div>`;
+                  `<span class="text-yellow-300">📁</span>` +
+                  `<button onclick="fetchFileList('${f.path}')" class="truncate text-left flex-1 ml-2">${f.name}</button>` +
+                  `</div>`;
         });
-
+        
         data.files.forEach(f => {
-          html += `<div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">` +
-            `<div class="flex items-center space-x-2 min-w-0 flex-1 truncate">` +
-              `<span class="text-green-300">📄</span>` +
-              `<span class="truncate">${f.name}</span>` +
-            `</div>` +
-            `<button onclick="deleteFile('${f.path}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">删除</button>` +
-          `</div>`;
+          html += `
+            <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
+              <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+                <span class="text-green-300">📄</span>
+                <a href="/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
+              </div>
+              <button onclick="deleteFile('${f.path}')" class="text-orange-400 hover:text-orange-300">删除</button>
+            </div>`;
         });
-
-        container.innerHTML = html;
+        
+        c.innerHTML = html;
       } catch (err) {
         logToOutput(`获取文件列表失败: ${err.message}`, true);
       }
     }
 
-    // 初始化列表
+    // 初始化列表加载
     fetchFileList();
   </script>
 </body>
