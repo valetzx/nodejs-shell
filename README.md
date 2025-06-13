@@ -51,7 +51,7 @@ docker run -d -p 3000:3000 \
 
 打开 `http://<host>:<port>/@` 可见双列 Dashboard：
 
-如需自定义界面样式，可在 `public/panel.css` 中编写 CSS，当该文件不存在时会使用内置默认样式。
+如需自定义界面样式，可在 `modern_panel.html` 中编写，当该文件不存在时会使用内置默认样式。
 
 ![image](https://github.com/user-attachments/assets/dad0d6e4-2956-4aa0-a956-35797706cada)
 
