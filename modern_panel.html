@@ -7,11 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-    .terminal-output {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      line-height: 1.5;
-    }
+    .terminal-output { font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.5; }
     .prompt { color: #3e90f0; }
     .command { color: #c5c5c5; }
     .output { color: #d4d4d4; white-space: pre-wrap; }
@@ -27,42 +23,48 @@
 
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Bash 面板 -->
-      <div class="flex-1 flex flex-col">
-        <div class="bg-[#1e1e1e] rounded-xl shadow-xl p-4 flex flex-col flex-1 resize-y">
-          <div class="mb-4 flex flex-wrap items-center gap-3">
-            <label>管理员密码</label>
-            <input type="password" id="admin" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+      <section class="flex-1 flex flex-col min-w-0">
+        <div class="bg-[#1e1e1e] rounded-xl shadow-xl p-4 flex flex-col flex-1 resize-y min-w-0">
+          <div class="mb-4 flex flex-col sm:flex-row items-center gap-3">
+            <label>管理员密码：</label>
+            <input type="password" id="admin" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1" />
+            <button onclick="document.getElementById('output').innerHTML=''"
+                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">清空</button>
           </div>
 
-          <div id="output" class="terminal-output bg-black p-4 rounded flex-1 min-h-[300px] max-h-[600px] overflow-y-auto mb-4">
+          <div id="output" class="terminal-output bg-black p-4 rounded flex-1 min-h-[300px] max-h-[600px] overflow-y-auto mb-4 min-w-0">
             <div class="output"><span class="prompt">$</span> <span class="text-gray-400">欢迎使用服务器终端面板</span></div>
           </div>
 
           <div class="flex items-center bg-gray-800 px-3 py-2 rounded gap-2">
             <button onclick="runCommand(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-sm">RE</button>
             <span class="prompt">$</span>
-            <input type="text" id="cmd" class="flex-1 bg-transparent text-white ml-2" placeholder="输入命令..." autocomplete="off" autofocus>
+            <input type="text" id="cmd" class="flex-1 bg-transparent text-white ml-2 min-w-0" placeholder="输入命令..." autocomplete="off" autofocus />
             <button onclick="runCommand(false)" class="bg-cyan-600 text-white px-4 py-1 ml-1 rounded">执行</button>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- 文件管理器 -->
-      <div class="flex-1 bg-gray-800 rounded-xl shadow-lg p-4">
-        <div class="mb-4">
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2">
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-gray-400">文件密码：</label>
-              <input type="password" id="unipass" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
-            </div>
-            <form id="uploadForm" enctype="multipart/form-data" onsubmit="return uploadFile(event)" class="flex items-center gap-2">
-              <input type="file" id="uploadInput" name="file" required class="text-sm text-white" />
-              <button class="bg-cyan-600 text-white px-3 py-1 rounded hover:bg-cyan-700 text-sm">上传</button>
-            </form>
+      <section class="flex-1 bg-gray-800 rounded-xl shadow-lg p-4 min-w-0 flex flex-col">
+        <!-- 文件操作栏: 密码 + 上传/刷新 -->
+        <div class="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <label>文件密码：</label>
+            <input type="password" id="unipass" placeholder="输入密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1 min-w-0" />
           </div>
+          <form id="uploadForm" enctype="multipart/form-data" onsubmit="return uploadFile(event)" class="flex items-center gap-2">
+            <input type="file" id="uploadInput" name="file" required class="hidden" />
+            <label for="uploadInput" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm cursor-pointer">选择文件</label>
+            <button type="submit" class="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1 rounded text-sm">上传</button>
+            <button type="button" onclick="fetchFileList(currentFolder)" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">刷新</button>
+          </form>
         </div>
-        <div id="file-list" class="space-y-4 text-sm"></div>
-      </div>
+        <!-- 文件列表 -->
+        <div id="file-list" class="space-y-2 text-sm flex-1 overflow-y-auto min-w-0">
+          <!-- 动态渲染 -->
+        </div>
+      </section>
     </div>
   </div>
 
@@ -71,152 +73,151 @@
     let historyIndex = -1;
     let currentFolder = "";
 
-    function runCommand(useRe) {
-      const admin = document.getElementById("admin").value.trim();
-      const re = useRe ? "&re=1" : "";
-      let command = document.getElementById("cmd").value.trim();
-      if (!command) return;
+    // 处理文件选择
+    document.getElementById('uploadInput').addEventListener('change', function() {
+      fetchFileList(currentFolder);
+    });
 
+    function runCommand(useRe) {
+      const admin = document.getElementById('admin').value.trim();
+      const re = useRe ? '&re=1' : '';
+      const command = document.getElementById('cmd').value.trim();
+      if (!command) return;
       commandHistory.push(command);
       historyIndex = commandHistory.length;
-
-      const output = document.getElementById("output");
-      const cmdLine = document.createElement("div");
-      cmdLine.className = "output";
+      const output = document.getElementById('output');
+      const cmdLine = document.createElement('div');
+      cmdLine.className = 'output';
       cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command">${command}</span>`;
       output.appendChild(cmdLine);
-
-      const processing = document.createElement("div");
-      processing.className = "output text-gray-500";
+      const processing = document.createElement('div');
+      processing.className = 'output text-gray-500';
       processing.innerHTML = '<span class="prompt">></span> 执行中...';
       output.appendChild(processing);
       output.scrollTop = output.scrollHeight;
-
-      fetch('/bash/' + encodeURIComponent("date && " + command) + '?admin=' + admin + re)
+      fetch(`/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${re}`)
         .then(res => res.text())
         .then(data => {
           output.removeChild(processing);
-          const result = document.createElement("div");
-          result.className = "output";
+          const result = document.createElement('div');
+          result.className = 'output';
           result.innerHTML = `<span class="prompt">></span> ${data}`;
           output.appendChild(result);
           output.scrollTop = output.scrollHeight;
-          document.getElementById("cmd").value = "";
+          document.getElementById('cmd').value = '';
         })
         .catch(err => {
           output.removeChild(processing);
-          const error = document.createElement("div");
-          error.className = "output error";
+          const error = document.createElement('div');
+          error.className = 'output error';
           error.innerHTML = `<span class="prompt">!</span> 错误: ${err.message}`;
           output.appendChild(error);
           output.scrollTop = output.scrollHeight;
         });
     }
 
-    document.getElementById("cmd").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") runCommand(false);
-      else if (e.key === "ArrowUp") {
+    document.getElementById('cmd').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') runCommand(false);
+      else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (historyIndex > 0) {
-          historyIndex--;
-          this.value = commandHistory[historyIndex];
-        }
-      } else if (e.key === "ArrowDown") {
+        if (historyIndex > 0) this.value = commandHistory[--historyIndex];
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (historyIndex < commandHistory.length - 1) {
-          historyIndex++;
-          this.value = commandHistory[historyIndex];
-        } else {
-          historyIndex = commandHistory.length;
-          this.value = "";
-        }
+        if (historyIndex < commandHistory.length - 1) this.value = commandHistory[++historyIndex];
+        else { historyIndex = commandHistory.length; this.value = ''; }
       }
     });
 
     async function uploadFile(event) {
       event.preventDefault();
-      const pwd = document.getElementById("unipass").value;
-      const fileInput = document.getElementById("uploadInput");
-      if (!pwd || fileInput.files.length === 0) return alert("请选择文件并输入密码");
-
+      const pwd = document.getElementById('unipass').value;
+      const fileInput = document.getElementById('uploadInput');
+      if (!pwd || fileInput.files.length === 0) return alert('请选择文件并输入密码');
       const formData = new FormData();
-      formData.append("file", fileInput.files[0]);
-      formData.append("password", pwd);
-      formData.append("folder", currentFolder);
-
-      const res = await fetch("/file", { method: "POST", body: formData });
-      if (res.ok) {
-        alert("上传成功");
-        fileInput.value = "";
-        fetchFileList(currentFolder);
-      } else {
-        const text = await res.text();
-        alert("上传失败: " + text);
-      }
+      formData.append('file', fileInput.files[0]);
+      formData.append('password', pwd);
+      formData.append('folder', currentFolder);
+      const res = await fetch('/file', { method: 'POST', body: formData });
+      if (res.ok) { alert('上传成功'); fileInput.value = ''; fetchFileList(currentFolder); }
+      else { const text = await res.text(); alert('上传失败: ' + text); }
     }
 
     async function deleteFile(filepath) {
-      const pwd = document.getElementById("unipass").value;
-      if (!pwd) return alert("请输入密码");
+      const pwd = document.getElementById('unipass').value;
+      if (!pwd) return alert('请输入密码');
       if (!confirm(`确定要删除文件 ${filepath} 吗？`)) return;
-
       const formData = new URLSearchParams();
-      formData.append("filepath", filepath);
-      formData.append("password", pwd);
-
-      const res = await fetch("/rmdir", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      formData.append('filepath', filepath);
+      formData.append('password', pwd);
+      const res = await fetch('/rmdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
       });
-
-      if (res.ok) {
-        alert("已删除");
-        fetchFileList(currentFolder);
-      } else {
-        const text = await res.text();
-        alert("删除失败: " + text);
-      }
+      if (res.ok) { alert('已删除'); fetchFileList(currentFolder); }
+      else { const text = await res.text(); alert('删除失败: ' + text); }
     }
 
-    async function fetchFileList(folder = "") {
-      currentFolder = folder;
-      const container = document.getElementById("file-list");
-      container.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
+  async function fetchFileList(folder = "") {
+    currentFolder = folder;
+    const container = document.getElementById('file-list');
+    container.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
+    try {
+      const res = await fetch(`/api/files?folder=${encodeURIComponent(folder)}`);
+      const data = await res.json();
+      const parent = folder.split('/').slice(0, -1).join('/');
 
-      try {
-        const res = await fetch(`/api/files?folder=${encodeURIComponent(folder)}`);
-        const data = await res.json();
-        const parent = folder.split("/").slice(0, -1).join("/");
+      // 构建列表项：始终显示“上一级”
+      let html = '';
+      html += `
+        <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
+          <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+            <span class="text-cyan-300">⬅</span>
+            <button onclick="fetchFileList('${parent}')" class="truncate text-left min-w-0">上一级</button>
+          </div>
+        </div>`;
 
-        const upButton = folder ? `<button onclick=\"fetchFileList('${parent}')\" class=\"text-cyan-400 hover:underline mb-2\">⬅ 返回上一级</button>` : "";
+      // 待上传项
+      const pendingFile = document.getElementById('uploadInput').files[0];
+      if (pendingFile) {
+        html += `
+          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+              <span class="text-yellow-300">⏳</span>
+              <span class="truncate">${pendingFile.name} (待上传)</span>
+            </div>
+          </div>`;
+      }
 
-        const folders = data.folders.map(f => `
-          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600">
-            <div class="flex items-center space-x-2">
+      // 文件夹
+      data.folders.forEach(f => {
+        html += `
+          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
               <span class="text-yellow-300">📁</span>
-              <button onclick=\"fetchFileList('${f.path}')\">${f.name}</button>
+              <button onclick="fetchFileList('${f.path}')" class="truncate text-left min-w-0">${f.name}</button>
             </div>
-          </div>`).join("");
+          </div>`;
+      });
 
-        const files = data.files.map(f => `
-          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600">
-            <div class="flex items-center space-x-2">
-              <a href="/files/${f.path}" download class="text-blue-300 hover:underline">${f.name}</a>
+      // 文件
+      data.files.forEach(f => {
+        html += `
+          <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+              <a href="/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
             </div>
-            <button onclick=\"deleteFile('${f.path}')\" class=\"text-red-400 hover:text-red-300\">删除</button>
-          </div>`).join("");
+            <button onclick="deleteFile('${f.path}')" class="text-red-400 hover:text-red-300">删除</button>
+          </div>`;
+      });
 
-        container.innerHTML = `${upButton}<div class="space-y-2">${folders}${files}</div>`;
-      } catch (err) {
-        container.innerHTML = `<div class="text-red-400">加载失败: ${err.message}</div>`;
-      }
+      container.innerHTML = `<div class="space-y-2">${html}</div>`;
+    } catch (err) {
+      container.innerHTML = `<div class="text-red-400">加载失败: ${err.message}</div>`;
     }
+  }
 
-    window.onload = () => {
-      fetchFileList();
-      document.getElementById("cmd").focus();
-    }
-  </script>
+  window.onload = () => { fetchFileList(); document.getElementById('cmd').focus(); };
+</script>
 </body>
 </html>
