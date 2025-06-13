@@ -281,8 +281,13 @@ app.get(Object.keys(ROUTES), (_, res) => {
     .send("WebSocket endpoint — please connect via WS protocol\n");
 });
 
+const filePath = path.join(__dirname, "modern_panel.html");
 app.get("/@", (req, res) => {
-  res.sendFile(path.join(__dirname, "modern_panel.html"));
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.send(PANEL_HTML);
+  }
 });
 
 app.use(
