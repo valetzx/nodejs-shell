@@ -5,10 +5,12 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 const os = require("os");
 const fs = require("fs");
 const net = require("net");
+const cors = require("cors");
 const path = require("path");
 const axios = require("axios");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
+const si = require("systeminformation");
 const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "passwd";
@@ -216,6 +218,7 @@ function runArunScript() {
 }
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 },
@@ -281,8 +284,13 @@ app.get(Object.keys(ROUTES), (_, res) => {
     .send("WebSocket endpoint — please connect via WS protocol\n");
 });
 
+const filePath = path.join(__dirname, "modern_panel.html");
 app.get("/@", (req, res) => {
-  res.sendFile(path.join(__dirname, "modern_panel.html"));
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.send(PANEL_HTML);
+  }
 });
 
 app.use(
@@ -520,6 +528,42 @@ app.get("/bash/:command", (req, res) => {
   process.stderr.on("data", (data) => writeStream.write(`错误: ${data}`));
   process.on("close", () => writeStream.end());
   res.send(`任务已启动，稍后访问查看结果: ${logFile}`);
+});
+
+let infoCache = {};
+
+async function collectInfo() {
+  try {
+    const [disk, net, cpu, memory, osData, netIf] = await Promise.all([
+      si.fsSize(),
+      si.networkStats(),
+      si.currentLoad(),
+      si.mem(),
+      si.osInfo(),
+      si.networkInterfaces(),
+    ]);
+    infoCache = {
+      time: Date.now(),
+      disk,
+      network: net,
+      cpu,
+      memory,
+      os: osData,
+      ip: netIf,
+    };
+  } catch (err) {
+    infoCache = { error: err.message };
+  }
+}
+
+collectInfo();
+setInterval(collectInfo, 600000);
+
+app.get("/info", (req, res) => {
+  if (req.query.admin !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  res.json(infoCache);
 });
 
 server.listen(PORT, "0.0.0.0", () => {
