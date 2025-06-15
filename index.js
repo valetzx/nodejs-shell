@@ -4,6 +4,7 @@ const { spawn } = require("child_process");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const os = require("os");
 const fs = require("fs");
+const cors = require("cors");
 const net = require("net");
 const path = require("path");
 const axios = require("axios");
@@ -217,6 +218,7 @@ function runArunScript() {
 }
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
 const ROUTES = {
   "/vm2098": { host: "127.0.0.1", port: 2098 },
