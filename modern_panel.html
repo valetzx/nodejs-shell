@@ -36,39 +36,78 @@
       </header>
 
       <section class="mb-6">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xl font-semibold text-cyan-300">系统监控</h2>
-          <div class="flex items-center gap-2">
-            <input
-              type="password"
-              id="monitorPass"
-              placeholder="监控密码"
-              class="bg-gray-700 text-white px-2 py-1 rounded text-sm"
-            />
-            <input
-              type="text"
-              id="newServer"
-              placeholder="新增服务器地址"
-              class="bg-gray-700 text-white px-2 py-1 rounded text-sm"
-            />
-            <input
-              type="text"
-              id="serverTag"
-              placeholder="自定义名称"
-              class="bg-gray-700 text-white px-2 py-1 rounded text-sm"
-            />
-            <button
-              onclick="addServer()"
-              class="text-green-400 hover:text-green-300 text-2xl"
-            >
-              +
-            </button>
-          </div>
+        <!-- 系统监控：标题和输入框同一行 -->
+        <div
+          class="sticky top-0 bg-gray-900 z-20 mb-4 p-2 flex flex-wrap items-center gap-2"
+        >
+          <h2 class="text-xl font-semibold text-cyan-300 flex-none">
+            系统监控
+          </h2>
+          <input
+            type="password"
+            id="monitorPass"
+            placeholder="监控密码"
+            value="guest"
+            class="flex-1 min-w-[120px] bg-gray-700 text-white px-2 py-1 rounded text-sm"
+          />
+          <input
+            type="text"
+            id="newServer"
+            placeholder="服务器地址"
+            class="flex-1 min-w-[120px] bg-gray-700 text-white px-2 py-1 rounded text-sm"
+          />
+          <input
+            type="text"
+            id="serverTag"
+            placeholder="自定义名称"
+            class="flex-1 min-w-[120px] bg-gray-700 text-white px-2 py-1 rounded text-sm"
+          />
+          <button
+            onclick="addServer()"
+            class="flex-none bg-green-500 hover:bg-green-400 text-white px-2 py-1 rounded text-sm"
+          >
+            +
+          </button>
         </div>
+
+        <!-- 服务器列表 -->
         <div
           id="server-cards"
-          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm"
-        ></div>
+          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm mb-4"
+        >
+          <div
+            class="bg-gray-800 p-4 rounded cursor-pointer hover:bg-gray-700"
+            onclick="showServerInfo('guest')"
+          >
+            guest
+          </div>
+        </div>
+
+        <!-- 服务器信息面板 -->
+        <div id="server-info" class="bg-gray-800 p-4 rounded hidden">
+          <h3 class="text-lg font-semibold mb-2">服务器: guest</h3>
+          <ul class="list-disc list-inside">
+            <li>CPU: 4 Cores</li>
+            <li>内存: 8GB</li>
+            <li>磁盘1: 100GB</li>
+            <li>磁盘2: 100GB</li>
+            <li>流量: 1TB</li>
+            <li>IP: 192.168.0.100</li>
+          </ul>
+          <h4 class="mt-4 font-semibold">文件夹列表</h4>
+          <ul class="list-disc list-inside">
+            <li>Images</li>
+            <li>Documents</li>
+            <li>
+              Build
+              <ul class="list-disc list-inside ml-5">
+                <li>project_address.txt</li>
+                <li>README.md</li>
+                <li>guest.txt</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <div class="flex flex-col lg:flex-row gap-6">
@@ -83,6 +122,7 @@
                 type="password"
                 id="admin"
                 placeholder="输入密码"
+                value="guest"
                 class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1"
               />
               <button
@@ -122,7 +162,7 @@
               />
               <button
                 onclick="runCommand(false)"
-                class="bg-cyan-600 text-white px-4 py-1 ml-1 rounded"
+                class="bg-cyan-600 text-white px-4 py-1 ml-1 rounded text-sm"
               >
                 执行
               </button>
@@ -140,7 +180,7 @@
               />
               <button
                 onclick="downloadFile()"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded text-sm"
               >
                 下载文件
               </button>
@@ -162,6 +202,7 @@
                 type="password"
                 id="unipass"
                 placeholder="输入密码"
+                value="guest"
                 class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1 min-w-0"
               />
             </div>
@@ -203,9 +244,7 @@
           <div
             id="file-list"
             class="space-y-2 text-sm flex-1 overflow-y-auto min-w-0"
-          >
-            <!-- 动态渲染 -->
-          </div>
+          ></div>
         </section>
       </div>
     </div>
@@ -230,7 +269,17 @@
       if (currentServerIndex >= servers.length) currentServerIndex = 0;
       let currentServer = servers[currentServerIndex];
 
+      function showServerInfo(name) {
+        if (name === "guest") {
+          document.getElementById("server-info").classList.remove("hidden");
+          document
+            .getElementById("server-info")
+            .scrollIntoView({ behavior: "smooth" });
+        }
+      }
+
       function serverToUrl(s) {
+        if (s.host === "guest") return "https://guest"; // 供 fetch 钩子识别
         const protocol = window.location.protocol;
         const port = s.port ? `:${s.port}` : "";
         return `${protocol}//${s.host}${port}`;
@@ -531,6 +580,63 @@
           logToOutput(`获取文件列表失败: ${err.message}`, true);
         }
       }
+
+      const guestInfo = {
+        cpu: { currentLoad: 12.3 },
+        memory: { active: 2 * 1024 ** 3, total: 8 * 1024 ** 3 }, // bytes
+        disk: [
+          { used: 25 * 1024 ** 3, size: 100 * 1024 ** 3 },
+          { used: 10 * 1024 ** 3, size: 100 * 1024 ** 3 },
+        ],
+        network: [{ rx_bytes: 123456789, tx_bytes: 987654321 }],
+        ip: [{ ip4: "192.168.0.100", internal: false }],
+        os: { distro: "GuestOS 1.0" },
+      };
+
+      // 按需生成文件/文件夹树
+      function buildGuestFiles(folder = "") {
+        const tree = {
+          "": {
+            folders: ["Images", "Documents"],
+            files: ["project_address.txt", "README.md", "guest.txt"],
+          },
+          Images: { folders: [test.jpg] },
+        };
+        const node = tree[folder] || { folders: [], files: [] };
+        return {
+          folders: node.folders.map((n) => ({
+            name: n,
+            path: folder ? `${folder}/${n}` : n,
+          })),
+          files: node.files.map((n) => ({
+            name: n,
+            path: folder ? `${folder}/${n}` : n,
+          })),
+        };
+      }
+
+      // fetch 替身
+      const _fetch = window.fetch.bind(window);
+      window.fetch = function (input, init = {}) {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.startsWith("https://guest")) {
+          let body = "",
+            status = 200,
+            headers = { "Content-Type": "application/json" };
+
+          if (url.includes("/info")) {
+            body = JSON.stringify(guestInfo);
+          } else if (url.includes("/api/files")) {
+            const p = new URL(url).searchParams.get("folder") || "";
+            body = JSON.stringify(buildGuestFiles(p));
+          } else {
+            body = "Guest placeholder";
+            headers["Content-Type"] = "text/plain";
+          }
+          return Promise.resolve(new Response(body, { status, headers }));
+        }
+        return _fetch(input, init); // 其它服务器照常请求
+      };
 
       // 初始化列表加载
       window.onload = () => {
