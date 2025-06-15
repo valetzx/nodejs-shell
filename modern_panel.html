@@ -21,6 +21,14 @@
       <h1 class="text-2xl font-bold text-cyan-400">服务器终端管理</h1>
     </header>
 
+    <section class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold text-cyan-300">系统监控</h2>
+        <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
+      </div>
+      <div id="server-cards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm"></div>
+    </section>
+
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Bash 面板 -->
       <section class="flex-1 flex flex-col min-w-0">
@@ -79,6 +87,59 @@
     let commandHistory = [];
     let historyIndex = -1;
     let currentFolder = "";
+
+    // 服务器监控
+    let servers = JSON.parse(localStorage.getItem('servers') || '[]');
+    if (servers.length === 0) servers.push(window.location.origin);
+
+    function addServer() {
+      const url = prompt('输入服务器地址 (如 http://host:port)');
+      if (url) {
+        servers.push(url);
+        localStorage.setItem('servers', JSON.stringify(servers));
+        renderServers();
+      }
+    }
+
+    async function fetchInfo(server) {
+      const res = await fetch(server + '/info');
+      return res.json();
+    }
+
+    async function renderServers() {
+      const wrap = document.getElementById('server-cards');
+      wrap.innerHTML = '';
+      for (const s of servers) {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1';
+        card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3><div>加载中...</div>`;
+        wrap.appendChild(card);
+        try {
+          const info = await fetchInfo(s);
+          const memUsed = (info.memory.active / 1073741824).toFixed(1);
+          const memTotal = (info.memory.total / 1073741824).toFixed(1);
+          const cpu = info.cpu.currentLoad.toFixed(1);
+          const diskUsed = (info.disk.reduce((a,b)=>a+b.used,0)/1073741824).toFixed(1);
+          const diskTotal = (info.disk.reduce((a,b)=>a+b.size,0)/1073741824).toFixed(1);
+          const net = info.network[0];
+          const rx = (net.rx_bytes/1048576).toFixed(1);
+          const tx = (net.tx_bytes/1048576).toFixed(1);
+          const iface = info.ip.find(i=>i.ip4 && !i.internal) || info.ip[0] || {};
+          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3>`+
+            `<div>CPU: <span class="text-lime-400">${cpu}%</span></div>`+
+            `<div>内存: ${memUsed}/${memTotal} GB</div>`+
+            `<div>磁盘: ${diskUsed}/${diskTotal} GB</div>`+
+            `<div>流量: ${rx}/${tx} MB</div>`+
+            `<div>IP: ${iface.ip4 || '-'} ${info.os.distro}</div>`;
+        } catch (e) {
+          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3>`+
+            `<div class="text-red-400">${e.message}</div>`;
+        }
+      }
+    }
+
+    renderServers();
+    setInterval(renderServers, 600000);
 
     // 选中文件后显示待上传文件
     document.getElementById('uploadInput').addEventListener('change', () => fetchFileList(currentFolder));
