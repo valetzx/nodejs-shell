@@ -627,11 +627,19 @@
           });
 
           data.files.forEach((f) => {
+            let downloadLink = `${serverToUrl(currentServer)}/files/${f.path}`;
+            if (f.name === "README.md" && currentServer.host === "guest") {
+              downloadLink = "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/README.md";
+            } else if (f.name === ">> Click TO MY Github <<" && currentServer.host === "guest") {
+              downloadLink = "https://github.com/valetzx/nodejs-shell";
+            } else if (f.name === "test.jpg" && currentServer.host === "guest") {
+              downloadLink = "https://www.dmoe.cc/random.php";
+            }
             html += `
             <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
               <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
                 <span class="text-green-300">📄</span>
-                <a href="${serverToUrl(currentServer)}/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
+                <a href="${downloadLink}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
               </div>
               <button onclick="deleteFile('${f.path}')" class="text-orange-400 hover:text-orange-300">删除</button>
             </div>`;
@@ -746,27 +754,6 @@
       // 默认初始收起
       document.getElementById("toggleServers").checked = false;
       applyToggleState();
-
-      window.addEventListener("DOMContentLoaded", () => {
-        document.querySelectorAll("a[href]").forEach((a) => {
-          const href = decodeURIComponent(a.getAttribute("href"));
-          if (href.includes(">> Click TO MY Github <<")) {
-            a.setAttribute("href", "https://github.com/valetzx/nodejs-shell");
-            a.setAttribute("target", "_blank");
-          }
-        });
-      });
-
-      const observer = new MutationObserver(() => {
-        document.querySelectorAll("a[href]").forEach((a) => {
-          const href = decodeURIComponent(a.getAttribute("href"));
-          if (href.includes(">> Click TO MY Github <<")) {
-            a.setAttribute("href", "https://github.com/valetzx/nodejs-shell");
-            a.setAttribute("target", "_blank");
-          }
-        });
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
 
       // 初始化列表加载
       window.onload = () => {
