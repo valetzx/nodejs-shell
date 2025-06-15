@@ -26,9 +26,9 @@
         <h2 class="text-xl font-semibold text-cyan-300">系统监控</h2>
         <div class="flex items-center gap-2">
           <input type="password" id="monitorPass" placeholder="监控密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+          <input type="text" id="newServer" placeholder="新增服务器地址" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
           <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
         </div>
-        <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
       </div>
       <div id="server-cards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm"></div>
     </section>
@@ -94,21 +94,35 @@
 
     // 服务器监控
     let servers = JSON.parse(localStorage.getItem('servers') || '[]');
-    if (servers.length === 0) servers.push(window.location.origin);
-    let currentServer = localStorage.getItem('currentServer') || servers[0];
+    if (servers.length === 0) {
+      servers.push({ host: window.location.hostname, port: window.location.port });
+    }
+    let currentServerIndex = parseInt(localStorage.getItem('currentServerIndex') || '0', 10);
+    if (currentServerIndex >= servers.length) currentServerIndex = 0;
+    let currentServer = servers[currentServerIndex];
+
+    function serverToUrl(s) {
+      const protocol = window.location.protocol;
+      const port = s.port ? `:${s.port}` : '';
+      return `${protocol}//${s.host}${port}`;
+    }
 
     function addServer() {
-      const url = prompt('输入服务器地址 (如 http://host:port)');
-      if (url) {
-        servers.push(url);
+      const input = document.getElementById('newServer');
+      const val = input.value.trim();
+      if (val) {
+        const [host, port] = val.split(':');
+        servers.push({ host, port: port || '' });
         localStorage.setItem('servers', JSON.stringify(servers));
-        selectServer(url);
+        selectServer(servers.length - 1);
+        input.value = '';
       }
     }
 
-    function selectServer(s) {
-      currentServer = s;
-      localStorage.setItem('currentServer', s);
+    function selectServer(idx) {
+      currentServerIndex = idx;
+      currentServer = servers[idx];
+      localStorage.setItem('currentServerIndex', idx);
       renderServers();
       fetchFileList();
     }
@@ -119,27 +133,34 @@
 
     async function fetchInfo(server) {
       const pass = encodeURIComponent(getMonitorPass());
-      const res = await fetch(`${server}/info?admin=${pass}`);
-        renderServers();
+      const res = await fetch(`${serverToUrl(server)}/info?admin=${pass}`);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok || data.error) {
+        const msg = (data && data.error) || res.statusText || '请求失败';
+        throw new Error(msg);
       }
-    }
-
-    async function fetchInfo(server) {
-      const res = await fetch(server + '/info');
-      return res.json();
+      return data;
     }
 
     async function renderServers() {
       const wrap = document.getElementById('server-cards');
       wrap.innerHTML = '';
-      for (const s of servers) {
+      servers.forEach((s, idx) => {
         const card = document.createElement('div');
+        const label = `${s.host}${s.port ? ':' + s.port : ''}`;
         card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1 cursor-pointer';
-        if (s === currentServer) card.classList.add('ring', 'ring-cyan-500');
-        card.onclick = () => selectServer(s);
-        card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1';
-        card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3><div>加载中...</div>`;
+        if (idx === currentServerIndex) card.classList.add('ring', 'ring-cyan-500');
+        card.onclick = () => selectServer(idx);
+        card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3><div>加载中...</div>`;
         wrap.appendChild(card);
+      });
+      // fetch info sequentially
+      for (let i = 0; i < servers.length; i++) {
+        const card = wrap.children[i];
+        const s = servers[i];
         try {
           const info = await fetchInfo(s);
           const memUsed = (info.memory.active / 1073741824).toFixed(1);
@@ -151,14 +172,16 @@
           const rx = (net.rx_bytes/1048576).toFixed(1);
           const tx = (net.tx_bytes/1048576).toFixed(1);
           const iface = info.ip.find(i=>i.ip4 && !i.internal) || info.ip[0] || {};
-          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3>`+
+          const label = `${s.host}${s.port ? ':' + s.port : ''}`;
+          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3>`+
             `<div>CPU: <span class="text-lime-400">${cpu}%</span></div>`+
             `<div>内存: ${memUsed}/${memTotal} GB</div>`+
             `<div>磁盘: ${diskUsed}/${diskTotal} GB</div>`+
             `<div>流量: ${rx}/${tx} MB</div>`+
             `<div>IP: ${iface.ip4 || '-'} ${info.os.distro}</div>`;
         } catch (e) {
-          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3>`+
+          const label = `${s.host}${s.port ? ':' + s.port : ''}`;
+          card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3>`+
             `<div class="text-red-400">${e.message}</div>`;
         }
       }
@@ -194,7 +217,7 @@
       historyIndex = commandHistory.length;
       logToOutput(`<span class="command">${command}</span>`);
       logToOutput('执行中...');
-      fetch(`${currentServer}/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${useRe ? '&re=1' : ''}`)
+      fetch(`${serverToUrl(currentServer)}/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${useRe ? '&re=1' : ''}`)
         .then(res => res.text())
         .then(data => { logToOutput(data.replace(/\n/g,'<br>')); document.getElementById('cmd').value = ''; })
         .catch(err => logToOutput(`错误: ${err.message}`, true));
@@ -227,7 +250,7 @@
       form.append('password', pwd);
       form.append('folder', currentFolder);
       try {
-        const res = await fetch(`${currentServer}/file`, { method: 'POST', body: form });
+        const res = await fetch(`${serverToUrl(currentServer)}/file`, { method: 'POST', body: form });
         const text = await res.text();
         if (res.ok) {
           logToOutput(`上传成功: ${fileInput.files[0].name}`);
@@ -249,7 +272,7 @@
       if (!confirm(`确定删除 ${path} 吗？`)) return;
       const params = new URLSearchParams({ filepath: path, password: pwd });
       try {
-        const res = await fetch(`${currentServer}/rmdir`, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+        const res = await fetch(`${serverToUrl(currentServer)}/rmdir`, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: params });
         const text = await res.text();
         if (res.ok) {
           logToOutput(`已删除: ${path}`);
@@ -268,7 +291,7 @@
       const c = document.getElementById('file-list');
       c.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
       try {
-        const res = await fetch(`${currentServer}/api/files?folder=${encodeURIComponent(folder)}`);
+        const res = await fetch(`${serverToUrl(currentServer)}/api/files?folder=${encodeURIComponent(folder)}`);
         const data = await res.json();
         const parent = folder.split('/').slice(0, -1).join('/');
         
@@ -298,7 +321,7 @@
             <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
               <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
                 <span class="text-green-300">📄</span>
-                <a href="${currentServer}/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
+                <a href="${serverToUrl(currentServer)}/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
               </div>
               <button onclick="deleteFile('${f.path}')" class="text-orange-400 hover:text-orange-300">删除</button>
             </div>`;
