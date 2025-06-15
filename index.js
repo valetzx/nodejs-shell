@@ -558,6 +558,9 @@ collectInfo();
 setInterval(collectInfo, 600000);
 
 app.get("/info", (req, res) => {
+  if (req.query.admin !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
   res.json(infoCache);
 });
 
