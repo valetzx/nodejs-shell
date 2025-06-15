@@ -24,6 +24,10 @@
     <section class="mb-6">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-xl font-semibold text-cyan-300">系统监控</h2>
+        <div class="flex items-center gap-2">
+          <input type="password" id="monitorPass" placeholder="监控密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+          <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
+        </div>
         <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
       </div>
       <div id="server-cards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm"></div>
@@ -91,12 +95,31 @@
     // 服务器监控
     let servers = JSON.parse(localStorage.getItem('servers') || '[]');
     if (servers.length === 0) servers.push(window.location.origin);
+    let currentServer = localStorage.getItem('currentServer') || servers[0];
 
     function addServer() {
       const url = prompt('输入服务器地址 (如 http://host:port)');
       if (url) {
         servers.push(url);
         localStorage.setItem('servers', JSON.stringify(servers));
+        selectServer(url);
+      }
+    }
+
+    function selectServer(s) {
+      currentServer = s;
+      localStorage.setItem('currentServer', s);
+      renderServers();
+      fetchFileList();
+    }
+
+    function getMonitorPass() {
+      return document.getElementById('monitorPass').value.trim();
+    }
+
+    async function fetchInfo(server) {
+      const pass = encodeURIComponent(getMonitorPass());
+      const res = await fetch(`${server}/info?admin=${pass}`);
         renderServers();
       }
     }
@@ -111,6 +134,9 @@
       wrap.innerHTML = '';
       for (const s of servers) {
         const card = document.createElement('div');
+        card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1 cursor-pointer';
+        if (s === currentServer) card.classList.add('ring', 'ring-cyan-500');
+        card.onclick = () => selectServer(s);
         card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1';
         card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3><div>加载中...</div>`;
         wrap.appendChild(card);
@@ -168,7 +194,7 @@
       historyIndex = commandHistory.length;
       logToOutput(`<span class="command">${command}</span>`);
       logToOutput('执行中...');
-      fetch(`/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${useRe ? '&re=1' : ''}`)
+      fetch(`${currentServer}/bash/${encodeURIComponent('date && ' + command)}?admin=${admin}${useRe ? '&re=1' : ''}`)
         .then(res => res.text())
         .then(data => { logToOutput(data.replace(/\n/g,'<br>')); document.getElementById('cmd').value = ''; })
         .catch(err => logToOutput(`错误: ${err.message}`, true));
@@ -201,7 +227,7 @@
       form.append('password', pwd);
       form.append('folder', currentFolder);
       try {
-        const res = await fetch('/file', { method: 'POST', body: form });
+        const res = await fetch(`${currentServer}/file`, { method: 'POST', body: form });
         const text = await res.text();
         if (res.ok) {
           logToOutput(`上传成功: ${fileInput.files[0].name}`);
@@ -223,7 +249,7 @@
       if (!confirm(`确定删除 ${path} 吗？`)) return;
       const params = new URLSearchParams({ filepath: path, password: pwd });
       try {
-        const res = await fetch('/rmdir', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: params });
+        const res = await fetch(`${currentServer}/rmdir`, { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: params });
         const text = await res.text();
         if (res.ok) {
           logToOutput(`已删除: ${path}`);
@@ -242,7 +268,7 @@
       const c = document.getElementById('file-list');
       c.innerHTML = '<div class="text-gray-400 animate-pulse">加载中...</div>';
       try {
-        const res = await fetch(`/api/files?folder=${encodeURIComponent(folder)}`);
+        const res = await fetch(`${currentServer}/api/files?folder=${encodeURIComponent(folder)}`);
         const data = await res.json();
         const parent = folder.split('/').slice(0, -1).join('/');
         
@@ -272,7 +298,7 @@
             <div class="bg-gray-700 p-3 rounded flex justify-between items-center hover:bg-gray-600 min-w-0">
               <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
                 <span class="text-green-300">📄</span>
-                <a href="/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
+                <a href="${currentServer}/files/${f.path}" download class="truncate text-blue-300 hover:underline">${f.name}</a>
               </div>
               <button onclick="deleteFile('${f.path}')" class="text-orange-400 hover:text-orange-300">删除</button>
             </div>`;
@@ -286,7 +312,6 @@
 
     // 初始化列表加载
     window.onload = () => { fetchFileList(); document.getElementById('cmd').focus(); };
-    fetchFileList();
   </script>
 </body>
 </html>
