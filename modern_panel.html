@@ -255,19 +255,28 @@
       let currentFolder = "";
 
       // 服务器监控
-      let servers = JSON.parse(localStorage.getItem("servers") || "[]");
-      if (servers.length === 0) {
-        const host = window.location.hostname;
-        const port = window.location.port;
-        const tag = "localhost";
-        servers.push({ host, port, tag });
-      }
-      let currentServerIndex = parseInt(
-        localStorage.getItem("currentServerIndex") || "0",
-        10,
-      );
-      if (currentServerIndex >= servers.length) currentServerIndex = 0;
-      let currentServer = servers[currentServerIndex];
+let servers = JSON.parse(localStorage.getItem("servers") || "[]");
+
+// 添加 guest 服务器并放在第一位（如果尚未存在）
+const hasGuest = servers.some(s => s.host === "guest");
+if (!hasGuest) {
+  servers.unshift({ host: "guest", port: "", tag: "guest" });
+}
+
+// 如果 servers 长度仍为 0（不太可能了），添加默认 localhost
+if (servers.length === 0) {
+  const host = window.location.hostname;
+  const port = window.location.port;
+  const tag = "localhost";
+  servers.push({ host, port, tag });
+}
+
+// 设置当前服务器索引为 guest（即 0）
+let currentServerIndex = 0;
+let currentServer = servers[currentServerIndex];
+
+localStorage.setItem("servers", JSON.stringify(servers));
+localStorage.setItem("currentServerIndex", "0");
 
       function showServerInfo(name) {
         if (name === "guest") {
@@ -598,9 +607,9 @@
         const tree = {
           "": {
             folders: ["Images", "Documents"],
-            files: [">> Click TO MY Github <<", "README.md", "guest.txt"],
+            files: [">> Click TO MY Github <<", "guest.txt", "README.md"],
           },
-          Images: { folders: [], files: ["new.jpg", "README.md", "guest.jpg"] },
+          Images: { folders: [], files: ["guest.jpg", "test.jpg", "README.md"] },
         };
         const node = tree[folder] || { folders: [], files: [] };
         return {
