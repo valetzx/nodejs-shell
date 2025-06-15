@@ -28,6 +28,7 @@
           <input type="password" id="monitorPass" placeholder="监控密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
           <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
         </div>
+        <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
       </div>
       <div id="server-cards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm"></div>
     </section>
@@ -119,6 +120,12 @@
     async function fetchInfo(server) {
       const pass = encodeURIComponent(getMonitorPass());
       const res = await fetch(`${server}/info?admin=${pass}`);
+        renderServers();
+      }
+    }
+
+    async function fetchInfo(server) {
+      const res = await fetch(server + '/info');
       return res.json();
     }
 
@@ -130,6 +137,7 @@
         card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1 cursor-pointer';
         if (s === currentServer) card.classList.add('ring', 'ring-cyan-500');
         card.onclick = () => selectServer(s);
+        card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1';
         card.innerHTML = `<h3 class="text-cyan-400 mb-1">${s}</h3><div>加载中...</div>`;
         wrap.appendChild(card);
         try {
