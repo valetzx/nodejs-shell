@@ -27,6 +27,7 @@
         <div class="flex items-center gap-2">
           <input type="password" id="monitorPass" placeholder="监控密码" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
           <input type="text" id="newServer" placeholder="新增服务器地址" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
+          <input type="text" id="serverTag" placeholder="自定义名称" class="bg-gray-700 text-white px-2 py-1 rounded text-sm" />
           <button onclick="addServer()" class="text-green-400 hover:text-green-300 text-2xl">+</button>
         </div>
       </div>
@@ -95,7 +96,7 @@
     // 服务器监控
     let servers = JSON.parse(localStorage.getItem('servers') || '[]');
     if (servers.length === 0) {
-      servers.push({ host: window.location.hostname, port: window.location.port });
+      servers.push({ host: window.location.hostname, port: window.location.port, tag: '' });
     }
     let currentServerIndex = parseInt(localStorage.getItem('currentServerIndex') || '0', 10);
     if (currentServerIndex >= servers.length) currentServerIndex = 0;
@@ -109,13 +110,16 @@
 
     function addServer() {
       const input = document.getElementById('newServer');
+      const tagInput = document.getElementById('serverTag');
       const val = input.value.trim();
+      const tag = tagInput.value.trim();
       if (val) {
         const [host, port] = val.split(':');
-        servers.push({ host, port: port || '' });
+        servers.push({ host, port: port || '', tag });
         localStorage.setItem('servers', JSON.stringify(servers));
         selectServer(servers.length - 1);
         input.value = '';
+        tagInput.value = '';
       }
     }
 
@@ -123,7 +127,7 @@
       ev.stopPropagation();
       servers.splice(idx, 1);
       if (servers.length === 0) {
-        servers.push({ host: window.location.hostname, port: window.location.port });
+        servers.push({ host: window.location.hostname, port: window.location.port, tag: '' });
         idx = 0;
       }
       if (currentServerIndex >= servers.length) currentServerIndex = servers.length - 1;
@@ -165,7 +169,8 @@
       wrap.innerHTML = '';
       servers.forEach((s, idx) => {
         const card = document.createElement('div');
-        const label = `${s.host}${s.port ? ':' + s.port : ''}`;
+        const hostPort = `${s.host}${s.port ? ':' + s.port : ''}`;
+        const label = s.tag ? `${s.tag} (${hostPort})` : hostPort;
         card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1 cursor-pointer';
         if (idx === currentServerIndex) card.classList.add('ring', 'ring-cyan-500');
         card.onclick = () => selectServer(idx);
@@ -192,7 +197,8 @@
           const rx = (net.rx_bytes/1048576).toFixed(1);
           const tx = (net.tx_bytes/1048576).toFixed(1);
           const iface = info.ip.find(i=>i.ip4 && !i.internal) || info.ip[0] || {};
-          const label = `${s.host}${s.port ? ':' + s.port : ''}`;
+          const hostPort = `${s.host}${s.port ? ':' + s.port : ''}`;
+          const label = s.tag ? `${s.tag} (${hostPort})` : hostPort;
           card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3>`+
             `<div>CPU: <span class="text-lime-400">${cpu}%</span></div>`+
             `<div>内存: ${memUsed}/${memTotal} GB</div>`+
@@ -200,7 +206,8 @@
             `<div>流量: ${rx}/${tx} MB</div>`+
             `<div>IP: ${iface.ip4 || '-'} ${info.os.distro}</div>`;
         } catch (e) {
-          const label = `${s.host}${s.port ? ':' + s.port : ''}`;
+          const hostPort = `${s.host}${s.port ? ':' + s.port : ''}`;
+          const label = s.tag ? `${s.tag} (${hostPort})` : hostPort;
           card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3>`+
             `<div class="text-red-400">${e.message}</div>`;
         }
