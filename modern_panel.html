@@ -746,6 +746,28 @@
       // 默认初始收起
       document.getElementById("toggleServers").checked = false;
       applyToggleState();
+
+      window.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("a[href]").forEach((a) => {
+          const href = decodeURIComponent(a.getAttribute("href"));
+          if (href.includes(">> Click TO MY Github <<")) {
+            a.setAttribute("href", "https://github.com/valetzx/nodejs-shell");
+            a.setAttribute("target", "_blank");
+          }
+        });
+      });
+
+      const observer = new MutationObserver(() => {
+        document.querySelectorAll("a[href]").forEach((a) => {
+          const href = decodeURIComponent(a.getAttribute("href"));
+          if (href.includes(">> Click TO MY Github <<")) {
+            a.setAttribute("href", "https://github.com/valetzx/nodejs-shell");
+            a.setAttribute("target", "_blank");
+          }
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+
       // 初始化列表加载
       window.onload = () => {
         fetchFileList();
