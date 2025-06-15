@@ -119,6 +119,21 @@
       }
     }
 
+    function removeServer(ev, idx) {
+      ev.stopPropagation();
+      servers.splice(idx, 1);
+      if (servers.length === 0) {
+        servers.push({ host: window.location.hostname, port: window.location.port });
+        idx = 0;
+      }
+      if (currentServerIndex >= servers.length) currentServerIndex = servers.length - 1;
+      currentServer = servers[currentServerIndex];
+      localStorage.setItem('servers', JSON.stringify(servers));
+      localStorage.setItem('currentServerIndex', currentServerIndex);
+      renderServers();
+      fetchFileList();
+    }
+
     function selectServer(idx) {
       currentServerIndex = idx;
       currentServer = servers[idx];
@@ -154,7 +169,12 @@
         card.className = 'bg-gray-800 rounded-lg p-4 shadow space-y-1 cursor-pointer';
         if (idx === currentServerIndex) card.classList.add('ring', 'ring-cyan-500');
         card.onclick = () => selectServer(idx);
-        card.innerHTML = `<h3 class="text-cyan-400 mb-1">${label}</h3><div>加载中...</div>`;
+        card.innerHTML =
+          `<div class="flex justify-between items-center">
+             <h3 class="text-cyan-400">${label}</h3>
+             <button onclick="removeServer(event, ${idx})" class="text-red-400 hover:text-red-300">×</button>
+           </div>
+           <div>加载中...</div>`;
         wrap.appendChild(card);
       });
       // fetch info sequentially
