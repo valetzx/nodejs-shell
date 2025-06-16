@@ -243,7 +243,7 @@ wss.on("connection", (ws, req, route) => {
 
   ws.on("message", (chunk) => upstream.write(chunk));
   upstream.on("data", (chunk) => {
-    if (ws.readyState === ws.OPEN) ws.send(chunk);
+    if (ws.readyState === ws.OPEN) ws.send(chunk.toString("utf8"));
   });
 
   const cleanup = () => {
