@@ -260,14 +260,10 @@ shellWss.on("connection", (ws) => {
   const shell = spawn("bash", ["-i"], {
     cwd: process.env.HOME,
     env: process.env,
+    stdio: ["pipe", "pipe", "pipe"],
   });
 
-  // 浏览器发来的永远是 text frame，这里统一转成字符串写入 Bash
-  ws.on("message", (data) => {
-    if (shell.stdin.writable) shell.stdin.write(data.toString());
-  });
-
-  // 将 Buffer ➜ 字符串再发送，保证浏览器拿到的是 text frame
+  // 处理输出
   const forward = (chunk) => {
     if (ws.readyState === ws.OPEN) ws.send(chunk.toString("utf8"));
   };
@@ -275,9 +271,21 @@ shellWss.on("connection", (ws) => {
   shell.stdout.on("data", forward);
   shell.stderr.on("data", forward);
 
+  ws.on("message", (data) => {
+    if (shell.stdin.writable) shell.stdin.write(data.toString());
+  });
+
+  // ⭐ 添加更完整的清理逻辑
   const cleanup = () => {
-    shell.kill();
-    ws.close();
+    if (!shell.killed) {
+      try {
+        shell.kill("SIGKILL"); // 强制杀死，确保彻底退出
+        console.log(`[x] bash 进程已被终止 PID=${shell.pid}`);
+      } catch (err) {
+        console.error("终止 bash 进程失败:", err.message);
+      }
+    }
+    if (ws.readyState === ws.OPEN) ws.close();
   };
 
   ws.on("close", cleanup);
