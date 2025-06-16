@@ -258,18 +258,21 @@ wss.on("connection", (ws, req, route) => {
 });
 
 shellWss.on("connection", (ws) => {
-  const shell = pty.spawn("bash", [], {
-    name: "xterm-color",
-    cols: 80,
-    rows: 24,
+  const shell = spawn("bash", ["-i"], {
     cwd: process.env.HOME,
     env: process.env,
   });
 
-  ws.on("message", (data) => shell.write(data.toString()));
-  shell.on("data", (data) => {
-    if (ws.readyState === ws.OPEN) ws.send(data);
+  ws.on("message", (data) => {
+    if (shell.stdin.writable) shell.stdin.write(data);
   });
+
+  const forward = (chunk) => {
+    if (ws.readyState === ws.OPEN) ws.send(chunk);
+  };
+
+  shell.stdout.on("data", forward);
+  shell.stderr.on("data", forward);
 
   const cleanup = () => {
     shell.kill();
@@ -278,6 +281,7 @@ shellWss.on("connection", (ws) => {
 
   ws.on("close", cleanup);
   ws.on("error", cleanup);
+  shell.on("close", cleanup);
 });
 
 server.on("upgrade", (req, socket, head) => {
