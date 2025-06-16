@@ -504,7 +504,15 @@
           .replace(/^http/, "ws")
           .concat(`/ssh?admin=${admin}`);
         sshWs = new WebSocket(url);
-        sshWs.onmessage = (e) => logToOutput(e.data.replace(/\n/g, "<br>"));
+        sshWs.onmessage = (e) => {
+          if (typeof e.data === "string") {
+            logToOutput(e.data.replace(/\n/g, "<br>"));
+          } else if (e.data instanceof Blob) {
+            e.data
+              .text()
+              .then((txt) => logToOutput(txt.replace(/\n/g, "<br>")));
+          }
+        };
         sshWs.onclose = () => {
           logToOutput("SSH 连接已关闭");
           sshWs = null;
@@ -662,10 +670,17 @@
           data.files.forEach((f) => {
             let downloadLink = `${serverToUrl(currentServer)}/files/${f.path}`;
             if (f.name === "README.md" && currentServer.host === "guest") {
-              downloadLink = "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/README.md";
-            } else if (f.name === ">> Click TO MY Github <<" && currentServer.host === "guest") {
+              downloadLink =
+                "https://raw.githubusercontent.com/valetzx/nodejs-shell/refs/heads/main/README.md";
+            } else if (
+              f.name === ">> Click TO MY Github <<" &&
+              currentServer.host === "guest"
+            ) {
               downloadLink = "https://github.com/valetzx/nodejs-shell";
-            } else if (f.name === "test.jpg" && currentServer.host === "guest") {
+            } else if (
+              f.name === "test.jpg" &&
+              currentServer.host === "guest"
+            ) {
               downloadLink = "https://www.dmoe.cc/random.php";
             }
             html += `
