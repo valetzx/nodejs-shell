@@ -10,7 +10,6 @@ const path = require("path");
 const axios = require("axios");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
-const pty = require("node-pty");
 const si = require("systeminformation");
 const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
@@ -263,12 +262,14 @@ shellWss.on("connection", (ws) => {
     env: process.env,
   });
 
+  // 浏览器发来的永远是 text frame，这里统一转成字符串写入 Bash
   ws.on("message", (data) => {
-    if (shell.stdin.writable) shell.stdin.write(data);
+    if (shell.stdin.writable) shell.stdin.write(data.toString());
   });
 
+  // 将 Buffer ➜ 字符串再发送，保证浏览器拿到的是 text frame
   const forward = (chunk) => {
-    if (ws.readyState === ws.OPEN) ws.send(chunk);
+    if (ws.readyState === ws.OPEN) ws.send(chunk.toString("utf8"));
   };
 
   shell.stdout.on("data", forward);
