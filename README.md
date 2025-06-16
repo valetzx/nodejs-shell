@@ -55,7 +55,7 @@ docker run -d -p 3000:3000 \
 
 ![image](https://github.com/user-attachments/assets/dad0d6e4-2956-4aa0-a956-35797706cada)
 
-* **左侧**：输入管理员口令后可执行 Bash 命令（输出保存至 `./logs`）
+* **左侧**：输入管理员口令后可执行 Bash 命令（输出保存至 `./logs`）。勾选 **SSH** 开关后切换为 WebSocket 实时终端
 * **右侧**：文件浏览 / 上传 / 新建 / 删除（需上传口令）
 
 ### 2. 文件管理 API
@@ -108,6 +108,16 @@ ws://example.com:3000/vm2098?admin=passwd
 ### 7. 子应用反向代理 `/app`
 
 将所有请求代理到 `http://0.0.0.0:2095`，可用于挂载前端面板或其他服务。
+
+### 8. WebSocket Shell `/ssh`
+
+使用 WebSocket 与服务器 Bash 交互：
+
+```
+ws://<host>:<port>/ssh?admin=ADMIN_PASSWORD
+```
+
+连接后即可在浏览器中输入命令并实时获取输出。
 
 ---
 
