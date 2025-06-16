@@ -568,7 +568,7 @@
       function downloadFile() {
         const url = document.getElementById("downloadUrl").value.trim();
         if (!url) return logToOutput("请输入下载链接", true);
-        document.getElementById("cmd").value = `wget ${url}`;
+        document.getElementById("cmd").value = `wget ${url} --no-check-certificate`;
         runCommand(false);
         document.getElementById("downloadUrl").value = "";
       }
