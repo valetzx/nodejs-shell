@@ -10,6 +10,7 @@ const path = require("path");
 const axios = require("axios");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
+const pty = require("node-pty");
 const si = require("systeminformation");
 const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
@@ -233,6 +234,8 @@ const wss = new WebSocketServer({
   maxPayload: 0,
 });
 
+const shellWss = new WebSocketServer({ noServer: true });
+
 wss.on("connection", (ws, req, route) => {
   const { host, port } = route;
   const upstream = net.createConnection({ host, port }, () =>
@@ -254,15 +257,51 @@ wss.on("connection", (ws, req, route) => {
   upstream.once("close", cleanup);
 });
 
+shellWss.on("connection", (ws) => {
+  const shell = pty.spawn("bash", [], {
+    name: "xterm-color",
+    cols: 80,
+    rows: 24,
+    cwd: process.env.HOME,
+    env: process.env,
+  });
+
+  ws.on("message", (data) => shell.write(data.toString()));
+  shell.on("data", (data) => {
+    if (ws.readyState === ws.OPEN) ws.send(data);
+  });
+
+  const cleanup = () => {
+    shell.kill();
+    ws.close();
+  };
+
+  ws.on("close", cleanup);
+  ws.on("error", cleanup);
+});
+
 server.on("upgrade", (req, socket, head) => {
   try {
     const parsed = new URL(
       req.url,
       `http://${req.headers.host || "localhost"}`,
     );
-    const route = ROUTES[parsed.pathname];
+    const pathname = parsed.pathname;
     const adminParam = parsed.searchParams.get("admin");
 
+    if (pathname === "/ssh") {
+      if (adminParam !== ADMIN_PASSWORD) {
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+      shellWss.handleUpgrade(req, socket, head, (ws) => {
+        shellWss.emit("connection", ws);
+      });
+      return;
+    }
+
+    const route = ROUTES[pathname];
     if (!route || adminParam !== ADMIN_PASSWORD) {
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
@@ -282,6 +321,13 @@ app.get(Object.keys(ROUTES), (_, res) => {
     .status(200)
     .type("text/plain")
     .send("WebSocket endpoint — please connect via WS protocol\n");
+});
+
+app.get("/ssh", (_, res) => {
+  res
+    .status(200)
+    .type("text/plain")
+    .send("WebSocket shell endpoint — connect via WS protocol\n");
 });
 
 const filePath = path.join(__dirname, "modern_panel.html");

@@ -178,6 +178,13 @@
                 value="guest"
                 class="bg-gray-700 text-white px-2 py-1 rounded text-sm flex-1"
               />
+              <div class="flex items-center gap-1">
+                <span class="text-sm text-gray-300">SSH</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggleSSH" />
+                  <span class="slider"></span>
+                </label>
+              </div>
               <button
                 onclick="clearOutput()"
                 class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
@@ -306,6 +313,8 @@
       let commandHistory = [];
       let historyIndex = -1;
       let currentFolder = "";
+      let sshWs = null;
+      let useSSH = false;
 
       // 服务器监控
       let servers = JSON.parse(localStorage.getItem("servers") || "[]");
@@ -489,6 +498,20 @@
         output.scrollTop = output.scrollHeight;
       }
 
+      function connectSSH() {
+        const admin = document.getElementById("admin").value.trim();
+        const url = serverToUrl(currentServer)
+          .replace(/^http/, "ws")
+          .concat(`/ssh?admin=${admin}`);
+        sshWs = new WebSocket(url);
+        sshWs.onmessage = (e) => logToOutput(e.data.replace(/\n/g, "<br>"));
+        sshWs.onclose = () => {
+          logToOutput("SSH 连接已关闭");
+          sshWs = null;
+        };
+        sshWs.onerror = () => logToOutput("SSH 连接错误", true);
+      }
+
       // 执行命令
       function runCommand(useRe) {
         const admin = document.getElementById("admin").value.trim();
@@ -497,16 +520,26 @@
         commandHistory.push(command);
         historyIndex = commandHistory.length;
         logToOutput(`<span class="command">${command}</span>`);
-        logToOutput("执行中...");
-        fetch(
-          `${serverToUrl(currentServer)}/bash/${encodeURIComponent("date && " + command)}?admin=${admin}${useRe ? "&re=1" : ""}`,
-        )
-          .then((res) => res.text())
-          .then((data) => {
-            logToOutput(data.replace(/\n/g, "<br>"));
+        if (useSSH) {
+          if (!sshWs || sshWs.readyState !== WebSocket.OPEN) connectSSH();
+          if (sshWs && sshWs.readyState === WebSocket.OPEN) {
+            sshWs.send(command + "\n");
             document.getElementById("cmd").value = "";
-          })
-          .catch((err) => logToOutput(`错误: ${err.message}`, true));
+          } else {
+            logToOutput("SSH 连接未就绪", true);
+          }
+        } else {
+          logToOutput("执行中...");
+          fetch(
+            `${serverToUrl(currentServer)}/bash/${encodeURIComponent("date && " + command)}?admin=${admin}${useRe ? "&re=1" : ""}`,
+          )
+            .then((res) => res.text())
+            .then((data) => {
+              logToOutput(data.replace(/\n/g, "<br>"));
+              document.getElementById("cmd").value = "";
+            })
+            .catch((err) => logToOutput(`错误: ${err.message}`, true));
+        }
       }
 
       // 下载 URL 文件
@@ -751,9 +784,19 @@
         .getElementById("toggleServers")
         .addEventListener("change", applyToggleState);
 
+      document.getElementById("toggleSSH").addEventListener("change", (e) => {
+        useSSH = e.target.checked;
+        if (useSSH) connectSSH();
+        else if (sshWs) {
+          sshWs.close();
+          sshWs = null;
+        }
+      });
+
       // 默认初始收起
       document.getElementById("toggleServers").checked = false;
       applyToggleState();
+      document.getElementById("toggleSSH").checked = false;
 
       // 初始化列表加载
       window.onload = () => {
