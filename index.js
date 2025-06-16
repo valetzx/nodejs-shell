@@ -10,6 +10,7 @@ const path = require("path");
 const axios = require("axios");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
+const pty = require("node-pty");
 const si = require("systeminformation");
 const PORT = process.env.PORT || 3000;
 const LOGS_FOLDER = "./logs";
