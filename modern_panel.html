@@ -504,6 +504,11 @@
           .replace(/^http/, "ws")
           .concat(`/ssh?admin=${admin}`);
         sshWs = new WebSocket(url);
+
+        sshWs.onopen = () => {
+          logToOutput("✅ SSH 连接成功");
+        };
+
         sshWs.onmessage = (e) => {
           if (typeof e.data === "string") {
             logToOutput(e.data.replace(/\n/g, "<br>"));
@@ -513,11 +518,20 @@
               .then((txt) => logToOutput(txt.replace(/\n/g, "<br>")));
           }
         };
+
         sshWs.onclose = () => {
-          logToOutput("SSH 连接已关闭");
+          logToOutput("❌ SSH 连接已关闭");
           sshWs = null;
+          document.getElementById("toggleSSH").checked = false;
+          useSSH = false;
         };
-        sshWs.onerror = () => logToOutput("SSH 连接错误", true);
+
+        sshWs.onerror = () => {
+          logToOutput("🚫 SSH 连接错误", true);
+          document.getElementById("toggleSSH").checked = false;
+          useSSH = false;
+          if (sshWs) sshWs.close();
+        };
       }
 
       // 执行命令
