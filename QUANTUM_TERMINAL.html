@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>量子终端管理面板</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -21,6 +20,8 @@
       background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
       color: #e0e0ff;
       font-family: 'Exo 2', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
     
     .sci-fi-font {
@@ -66,6 +67,8 @@
       color: var(--neon-blue);
       transition: all 0.3s ease;
       box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 500;
     }
     
     .cyber-button:hover {
@@ -259,456 +262,768 @@
       90% { clip: rect(101px, 9999px, 102px, 0); }
       100% { clip: rect(105px, 9999px, 83px, 0); }
     }
-  </style>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'dark-bg': '#0a0a15',
-            'darker-bg': '#050510',
-            'neon-blue': '#0ff',
-            'neon-purple': '#f0f',
-            'neon-green': '#0f0',
-            'neon-red': '#f00',
-            'glass-panel': 'rgba(20, 20, 40, 0.7)',
-          }
-        }
-      }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 22px;
     }
-  </script>
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.3s;
+      border-radius: 9999px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #06b6d4;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    .file-list-item {
+      transition: all 0.2s ease;
+    }
+    
+    .file-list-item:hover {
+      transform: translateX(5px);
+      border-color: var(--neon-blue);
+    }
+    
+    .no-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    .resize-y {
+      resize: vertical;
+      overflow: auto;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 30, 60, 0.3);
+      border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0, 200, 255, 0.5);
+      border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: var(--neon-blue);
+    }
+  </style>
 </head>
-<body>
-  <div id="app" class="min-h-screen p-4 sm:p-6">
-    <!-- 扫描线效果 -->
-    <div class="fixed inset-0 pointer-events-none">
-      <div class="scanline"></div>
-    </div>
-    
-    <!-- 背景网格 -->
-    <div class="fixed inset-0 grid-pattern pointer-events-none"></div>
-    
-    <div class="max-w-7xl mx-auto">
-      <!-- 顶部标题 -->
-      <header class="mb-8 text-center">
-        <h1 class="text-3xl md:text-4xl font-bold neon-text-blue sci-fi-font tracking-wider mb-2">
-          <span class="glitch-text" data-text="QUANTUM TERMINAL">QUANTUM TERMINAL</span>
-        </h1>
-        <p class="text-neon-purple text-opacity-80">Multidimensional Server Management System</p>
-      </header>
+<body class="p-4 sm:p-6">
+  <!-- 扫描线效果 -->
+  <div class="fixed inset-0 pointer-events-none">
+    <div class="scanline"></div>
+  </div>
+  
+  <!-- 背景网格 -->
+  <div class="fixed inset-0 grid-pattern pointer-events-none"></div>
+  
+  <div class="max-w-7xl mx-auto">
+    <!-- 顶部标题 -->
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold neon-text-blue sci-fi-font tracking-wider mb-2">
+        <span class="glitch-text" data-text="QUANTUM TERMINAL">QUANTUM TERMINAL</span>
+      </h1>
+      <p class="text-neon-purple text-opacity-80">Multidimensional Server Management System</p>
+    </header>
 
-      <!-- 服务器监控部分 -->
-      <section class="mb-8 glass-panel p-5 relative overflow-hidden hud-element">
-        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-900/10 to-transparent"></div>
+    <!-- 服务器监控部分 -->
+    <section class="mb-8 glass-panel p-5 relative overflow-hidden hud-element">
+      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-900/10 to-transparent"></div>
+      
+      <div class="flex flex-wrap justify-between items-center mb-5 relative z-10">
+        <h2 class="text-xl font-semibold neon-text-purple sci-fi-font flex items-center">
+          <span class="mr-2">⚡</span> SYSTEM MONITOR
+        </h2>
         
-        <div class="flex flex-wrap justify-between items-center mb-5 relative z-10">
-          <h2 class="text-xl font-semibold neon-text-purple sci-fi-font flex items-center">
-            <span class="mr-2">⚡</span> SYSTEM MONITOR
-          </h2>
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-300">SHOW SERVERS</span>
+            <label class="switch">
+              <input type="checkbox" id="toggleServers">
+              <span class="slider bg-gray-700"></span>
+            </label>
+          </div>
           
-          <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-              <span class="text-sm text-gray-300">SHOW SERVERS</span>
-              <label class="switch">
-                <input type="checkbox" v-model="showServers">
-                <span class="slider bg-gray-700"></span>
-              </label>
-            </div>
-            
-            <div class="flex items-center space-x-2">
-              <input
-                type="password"
-                v-model="monitorPass"
-                placeholder="MONITOR PASS"
-                class="bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm w-32 neon-border"
-              >
-            </div>
-          </div>
-        </div>
-        
-        <!-- 添加新服务器 -->
-        <div class="flex flex-wrap gap-3 mb-5 relative z-10">
-          <input
-            type="text"
-            v-model="newServer"
-            placeholder="SERVER ADDRESS"
-            class="flex-1 min-w-[120px] bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm neon-border"
-          >
-          <input
-            type="text"
-            v-model="serverTag"
-            placeholder="CUSTOM TAG"
-            class="flex-1 min-w-[120px] bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm neon-border"
-          >
-          <button
-            @click="addServer"
-            class="cyber-button px-4 py-2 rounded-lg text-sm font-medium sci-fi-font neon-text-blue"
-          >
-            + ADD NODE
-          </button>
-        </div>
-        
-        <!-- 服务器卡片列表 -->
-        <div v-show="showServers" class="relative z-10">
-          <div class="flex gap-4 overflow-x-auto mb-4 pb-2 cursor-grab active:cursor-grabbing">
-            <div 
-              v-for="(server, index) in servers" 
-              :key="index"
-              @click="selectServer(index)"
-              :class="['server-card p-4 rounded-xl cursor-pointer min-w-[16rem] no-select', 
-                      {'active': index === currentServerIndex}]"
+          <div class="flex items-center space-x-2">
+            <input
+              type="password"
+              id="monitorPass"
+              placeholder="MONITOR PASS"
+              value="guest"
+              class="bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm w-32 neon-border"
             >
-              <div class="flex justify-between items-center">
-                <h3 class="text-neon-blue font-medium">{{ server.tag || `${server.host}${server.port ? ':' + server.port : ''}` }}</h3>
-                <div class="space-x-2">
-                  <button @click.stop="editServer(index)" class="text-yellow-400 hover:text-yellow-300">+</button>
-                  <button @click.stop="removeServer(index)" class="text-red-400 hover:text-red-300">×</button>
-                </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 添加新服务器 -->
+      <div class="flex flex-wrap gap-3 mb-5 relative z-10">
+        <input
+          type="text"
+          id="newServer"
+          placeholder="SERVER ADDRESS"
+          class="flex-1 min-w-[120px] bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm neon-border"
+        >
+        <input
+          type="text"
+          id="serverTag"
+          placeholder="CUSTOM TAG"
+          class="flex-1 min-w-[120px] bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm neon-border"
+        >
+        <button
+          onclick="addServer()"
+          class="cyber-button px-4 py-2 rounded-lg text-sm sci-fi-font neon-text-blue"
+        >
+          + ADD NODE
+        </button>
+      </div>
+      
+      <!-- 服务器卡片列表 -->
+      <div id="server-cards" class="flex gap-4 overflow-x-auto mb-4 pb-2 cursor-grab active:cursor-grabbing relative z-10">
+        <div
+          class="server-card p-4 rounded-xl cursor-pointer min-w-[16rem] no-select"
+          onclick="showServerInfo('guest')"
+        >
+          <div class="flex justify-between items-center">
+            <h3 class="text-neon-blue font-medium">guest</h3>
+          </div>
+          <div class="mt-3 text-sm">
+            <div class="flex items-center gap-2 mb-1">
+              <span>CPU:</span>
+              <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style="width: 45%"></div>
               </div>
-              
-              <div class="mt-3 space-y-2">
-                <!-- CPU 使用率 -->
-                <div class="flex items-center gap-2">
-                  <span class="text-xs w-10">CPU</span>
-                  <div class="flex-1">
-                    <div class="progress-bar bg-gray-700/50">
-                      <div class="progress-fill bg-gradient-to-r from-cyan-500 to-blue-500" :style="{width: '45%'}"></div>
-                    </div>
-                    <div class="text-right text-xs mt-1 text-cyan-300">45%</div>
-                  </div>
-                </div>
-                
-                <!-- 内存使用率 -->
-                <div class="flex items-center gap-2">
-                  <span class="text-xs w-10">MEM</span>
-                  <div class="flex-1">
-                    <div class="progress-bar bg-gray-700/50">
-                      <div class="progress-fill bg-gradient-to-r from-purple-500 to-pink-500" :style="{width: '65%'}"></div>
-                    </div>
-                    <div class="text-right text-xs mt-1 text-purple-300">4.2/6.5GB</div>
-                  </div>
-                </div>
-                
-                <!-- 磁盘使用率 -->
-                <div class="flex items-center gap-2">
-                  <span class="text-xs w-10">DISK</span>
-                  <div class="flex-1">
-                    <div class="progress-bar bg-gray-700/50">
-                      <div class="progress-fill bg-gradient-to-r from-green-500 to-emerald-500" :style="{width: '35%'}"></div>
-                    </div>
-                    <div class="text-right text-xs mt-1 text-green-300">35/100GB</div>
-                  </div>
-                </div>
-                
-                <div class="text-xs flex justify-between mt-2">
-                  <div>NET: <span class="text-green-400">⬇︎ 124MB</span> | <span class="text-red-400">⬆︎ 87MB</span></div>
-                  <div class="text-cyan-300">Ubuntu 22.04</div>
-                </div>
+              <span class="text-cyan-300">45%</span>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <span>MEM:</span>
+              <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full" style="width: 65%"></div>
               </div>
+              <span class="text-purple-300">4.2/6.5GB</span>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <span>DISK:</span>
+              <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-full rounded-full" style="width: 35%"></div>
+              </div>
+              <span class="text-green-300">35/100GB</span>
+            </div>
+            <div class="mt-2 flex justify-between text-xs">
+              <div>NET: <span class="text-green-400">⬇︎ 124MB</span> | <span class="text-red-400">⬆︎ 87MB</span></div>
+              <div class="text-cyan-300">Ubuntu 22.04</div>
             </div>
           </div>
         </div>
-      </section>
-
-      <div class="flex flex-col lg:flex-row gap-6">
-        <!-- 终端面板 -->
-        <section class="flex-1 flex flex-col min-w-0">
-          <div class="glass-panel p-5 flex flex-col flex-1 min-w-0 relative hud-element">
-            <div class="mb-5 flex flex-wrap gap-3 relative z-10">
-              <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-                <label class="text-sm text-gray-300">ADMIN PASS:</label>
-                <input
-                  type="password"
-                  v-model="adminPass"
-                  placeholder="ACCESS CODE"
-                  class="bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm flex-1 neon-border"
-                >
-              </div>
-              
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-300">SSH</span>
-                  <label class="switch">
-                    <input type="checkbox" v-model="useSSH">
-                    <span class="slider bg-gray-700"></span>
-                  </label>
-                </div>
-                
-                <button
-                  @click="clearOutput"
-                  class="cyber-button px-3 py-2 rounded-lg text-sm neon-text-red"
-                >
-                  PURGE TERMINAL
-                </button>
-              </div>
-            </div>
-            
-            <!-- 终端输出 -->
-            <div class="terminal-output rounded-xl p-4 flex-1 min-h-[300px] max-h-[500px] overflow-y-auto mb-4 min-w-0 relative">
-              <div class="output mb-2">
-                <span class="prompt font-bold mr-2">$</span>
-                <span class="text-cyan-300">SYSTEM INITIALIZED... QUANTUM TERMINAL ONLINE</span>
-              </div>
-              <div class="output mb-2">
-                <span class="prompt font-bold mr-2">$</span>
-                <span class="text-cyan-300">WELCOME, OPERATOR. READY FOR COMMANDS</span>
-              </div>
-              <div class="output" v-for="(line, index) in outputLines" :key="index" :class="{'error': line.isError}">
-                <span v-if="!line.isCommand" class="prompt font-bold mr-2">$</span>
-                <span v-html="line.content"></span>
-              </div>
-            </div>
-            
-            <!-- 命令输入 -->
-            <div class="flex items-center bg-gray-800/60 px-4 py-3 rounded-xl gap-3 neon-border relative z-10">
-              <button
-                @click="runCommand(true)"
-                class="cyber-button px-3 py-2 rounded-lg text-sm neon-text-blue"
-              >
-                RE
-              </button>
-              <span class="prompt font-bold">$</span>
-              <input
-                type="text"
-                v-model="currentCommand"
-                @keyup.enter="runCommand(false)"
-                class="flex-1 bg-transparent text-white ml-2 min-w-0 focus:outline-none"
-                placeholder="ENTER COMMAND..."
-                autocomplete="off"
-                autofocus
-              >
-              <button
-                @click="runCommand(false)"
-                class="cyber-button px-4 py-2 rounded-lg text-sm neon-text-green"
-              >
-                EXECUTE
-              </button>
-            </div>
-            
-            <!-- 下载文件 -->
-            <div class="flex items-center bg-gray-800/60 px-4 py-3 rounded-xl gap-3 mt-3 neon-border relative z-10">
-              <input
-                type="text"
-                v-model="downloadUrl"
-                class="flex-1 bg-transparent text-white min-w-0 focus:outline-none"
-                placeholder="DOWNLOAD URL..."
-              >
-              <button
-                @click="downloadFile"
-                class="cyber-button px-4 py-2 rounded-lg text-sm neon-text-green"
-              >
-                DOWNLOAD
-              </button>
-            </div>
+      </div>
+      
+      <!-- 服务器信息面板 -->
+      <div id="server-info" class="glass-panel p-5 mt-4 relative z-10 hidden">
+        <h3 class="text-lg font-semibold mb-2 neon-text-blue">SERVER: guest</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 class="text-cyan-300 mb-2">SYSTEM SPECS</h4>
+            <ul class="space-y-1">
+              <li class="flex justify-between"><span>CPU:</span><span class="text-cyan-300">4 Cores</span></li>
+              <li class="flex justify-between"><span>Memory:</span><span class="text-cyan-300">8GB</span></li>
+              <li class="flex justify-between"><span>Disk 1:</span><span class="text-cyan-300">100GB</span></li>
+              <li class="flex justify-between"><span>Disk 2:</span><span class="text-cyan-300">100GB</span></li>
+              <li class="flex justify-between"><span>Bandwidth:</span><span class="text-cyan-300">1TB</span></li>
+              <li class="flex justify-between"><span>IP:</span><span class="text-cyan-300">192.168.0.100</span></li>
+            </ul>
           </div>
-        </section>
-        
-        <!-- 文件管理器 -->
-        <section class="flex-1 glass-panel p-5 min-w-0 flex flex-col relative hud-element">
-          <div class="mb-5 flex flex-wrap justify-between gap-3 relative z-10">
-            <div class="flex items-center gap-3 flex-1 min-w-[200px]">
-              <label class="text-sm text-gray-300">FILE PASS:</label>
+          <div>
+            <h4 class="text-cyan-300 mb-2">FOLDER STRUCTURE</h4>
+            <ul class="space-y-1">
+              <li>Images</li>
+              <li>Documents</li>
+              <li>Build
+                <ul class="ml-5 space-y-1">
+                  <li>project_address.txt</li>
+                  <li>README.md</li>
+                  <li>guest.txt</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- 终端面板 -->
+      <section class="flex-1 flex flex-col min-w-0">
+        <div class="glass-panel p-5 flex flex-col flex-1 min-w-0 relative hud-element resize-y">
+          <div class="mb-5 flex flex-wrap gap-3 relative z-10">
+            <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+              <label class="text-sm text-gray-300">ADMIN PASS:</label>
               <input
                 type="password"
-                v-model="filePass"
+                id="admin"
                 placeholder="ACCESS CODE"
+                value="guest"
                 class="bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm flex-1 neon-border"
               >
             </div>
             
             <div class="flex items-center gap-3">
-              <label for="uploadInput" class="cyber-button px-3 py-2 rounded-lg text-sm cursor-pointer">
-                SELECT FILE
-              </label>
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-300">SSH</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggleSSH">
+                  <span class="slider bg-gray-700"></span>
+                </label>
+              </div>
+              
               <button
-                @click="uploadFile"
-                class="cyber-button px-3 py-2 rounded-lg text-sm"
+                onclick="clearOutput()"
+                class="cyber-button px-3 py-2 rounded-lg text-sm neon-text-red"
               >
-                UPLOAD
-              </button>
-              <button
-                @click="fetchFileList"
-                class="cyber-button px-3 py-2 rounded-lg text-sm"
-              >
-                REFRESH
+                PURGE TERMINAL
               </button>
             </div>
           </div>
           
-          <!-- 文件列表 -->
-          <div class="file-list space-y-2 text-sm flex-1 overflow-y-auto min-w-0 relative z-10">
-            <div class="bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border mb-3">
-              <div class="flex items-center space-x-2 min-w-0 flex-1">
-                <span class="text-cyan-300">⬅</span>
-                <button class="truncate text-left min-w-0">PARENT DIRECTORY</button>
-              </div>
-            </div>
-            
-            <!-- 文件夹 -->
-            <div v-for="folder in folders" :key="folder.name" class="bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border">
-              <div class="flex items-center space-x-2 min-w-0 flex-1">
-                <span class="text-yellow-300">📁</span>
-                <button class="truncate text-left min-w-0">{{ folder.name }}</button>
-              </div>
-              <div class="text-xs text-gray-400">DIR</div>
-            </div>
-            
-            <!-- 文件 -->
-            <div v-for="file in files" :key="file.name" class="bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 neon-border">
-              <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
-                <span class="text-green-300">📄</span>
-                <a href="#" class="truncate text-cyan-300 hover:underline">{{ file.name }}</a>
-              </div>
-              <button class="text-red-400 hover:text-red-300 text-sm">DELETE</button>
+          <!-- 终端输出 -->
+          <div id="output" class="terminal-output rounded-xl p-4 flex-1 min-h-[300px] max-h-[500px] overflow-y-auto mb-4 min-w-0 custom-scrollbar">
+            <div class="output mb-2">
+              <span class="prompt font-bold mr-2">$</span>
+              <span class="text-cyan-300">Welcome to Quantum Terminal Management Panel</span>
             </div>
           </div>
-        </section>
-      </div>
+          
+          <!-- 命令输入 -->
+          <div class="flex items-center bg-gray-800/60 px-4 py-3 rounded-xl gap-3 neon-border relative z-10">
+            <button
+              onclick="runCommand(true)"
+              class="cyber-button px-3 py-2 rounded-lg text-sm neon-text-blue"
+            >
+              RE
+            </button>
+            <span class="prompt font-bold">$</span>
+            <input
+              type="text"
+              id="cmd"
+              class="flex-1 bg-transparent text-white ml-2 min-w-0 focus:outline-none"
+              placeholder="ENTER COMMAND..."
+              autocomplete="off"
+              autofocus
+            >
+            <button
+              onclick="runCommand(false)"
+              class="cyber-button px-4 py-2 rounded-lg text-sm neon-text-green"
+            >
+              EXECUTE
+            </button>
+          </div>
+          
+          <!-- 下载文件 -->
+          <div class="flex items-center bg-gray-800/60 px-4 py-3 rounded-xl gap-3 mt-3 neon-border relative z-10">
+            <input
+              type="text"
+              id="downloadUrl"
+              class="flex-1 bg-transparent text-white min-w-0 focus:outline-none"
+              placeholder="DOWNLOAD URL..."
+            >
+            <button
+              onclick="downloadFile()"
+              class="cyber-button px-4 py-2 rounded-lg text-sm neon-text-green"
+            >
+              DOWNLOAD
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- 文件管理器 -->
+      <section class="flex-1 glass-panel p-5 min-w-0 flex flex-col relative hud-element">
+        <div class="mb-5 flex flex-wrap justify-between gap-3 relative z-10">
+          <div class="flex items-center gap-3 flex-1 min-w-[200px]">
+            <label class="text-sm text-gray-300">FILE PASS:</label>
+            <input
+              type="password"
+              id="unipass"
+              placeholder="ACCESS CODE"
+              value="guest"
+              class="bg-gray-800/70 text-white px-3 py-2 rounded-lg text-sm flex-1 neon-border"
+            >
+          </div>
+          
+          <div class="flex items-center gap-3">
+            <input
+              type="file"
+              id="uploadInput"
+              name="file"
+              required
+              class="hidden"
+            >
+            <label
+              for="uploadInput"
+              class="cyber-button px-3 py-2 rounded-lg text-sm cursor-pointer"
+            >
+              SELECT FILE
+            </label>
+            <button
+              onclick="uploadFile(event)"
+              class="cyber-button px-3 py-2 rounded-lg text-sm"
+            >
+              UPLOAD
+            </button>
+            <button
+              onclick="fetchFileList(currentFolder)"
+              class="cyber-button px-3 py-2 rounded-lg text-sm"
+            >
+              REFRESH
+            </button>
+          </div>
+        </div>
+        
+        <!-- 文件列表 -->
+        <div id="file-list" class="space-y-2 text-sm flex-1 overflow-y-auto min-w-0 custom-scrollbar">
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border mb-3">
+            <div class="flex items-center space-x-2 min-w-0 flex-1">
+              <span class="text-cyan-300">⬅</span>
+              <button class="truncate text-left min-w-0">PARENT DIRECTORY</button>
+            </div>
+          </div>
+          
+          <!-- 动态内容将由JS填充 -->
+        </div>
+      </section>
     </div>
   </div>
 
   <script>
-    new Vue({
-      el: '#app',
-      data: {
-        showServers: false,
-        monitorPass: 'guest',
-        newServer: '',
-        serverTag: '',
-        servers: [
-          { host: 'guest', port: '', tag: 'guest' },
-          { host: 'node-01', port: '8080', tag: 'Alpha Server' },
-          { host: 'node-02', port: '8081', tag: 'Beta Server' },
-          { host: 'node-03', port: '8082', tag: 'Gamma Server' }
-        ],
-        currentServerIndex: 0,
-        adminPass: 'guest',
-        useSSH: false,
-        outputLines: [
-          { content: '<span class="command">system status</span>', isCommand: true },
-          { content: 'CPU: 45% | MEM: 65% | DISK: 35%', isCommand: false },
-          { content: 'NETWORK: ⬇︎ 124MB | ⬆︎ 87MB', isCommand: false },
-          { content: '<span class="text-green-400">SYSTEM OPERATIONAL</span>', isCommand: false },
-          { content: '<span class="command">ls -la</span>', isCommand: true },
-          { content: 'drwxr-xr-x  8 root root   4096 Jan 10 09:30 .<br>drwxr-xr-x 18 root root   4096 Jan  5 14:22 ..<br>-rw-r--r--  1 root root   3106 Jan  9 12:45 config.json<br>drwxr-xr-x  2 root root   4096 Jan 10 08:15 logs<br>drwxr-xr-x  5 root root   4096 Jan 10 09:30 system', isCommand: false }
-        ],
-        currentCommand: '',
-        downloadUrl: '',
-        filePass: 'guest',
-        folders: [
-          { name: 'system', path: '/system' },
-          { name: 'config', path: '/config' },
-          { name: 'logs', path: '/logs' },
-          { name: 'backups', path: '/backups' }
-        ],
-        files: [
-          { name: 'config.json', path: '/config.json' },
-          { name: 'readme.md', path: '/readme.md' },
-          { name: 'system_report.log', path: '/system_report.log' },
-          { name: 'security_audit.txt', path: '/security_audit.txt' }
-        ]
-      },
-      methods: {
-        addServer() {
-          if (this.newServer) {
-            const [host, port] = this.newServer.split(':');
-            this.servers.push({
-              host: host || 'localhost',
-              port: port || '',
-              tag: this.serverTag || ''
-            });
-            this.newServer = '';
-            this.serverTag = '';
-          }
-        },
-        removeServer(index) {
-          this.servers.splice(index, 1);
-          if (this.currentServerIndex >= this.servers.length) {
-            this.currentServerIndex = this.servers.length - 1;
-          }
-        },
-        editServer(index) {
-          const server = this.servers[index];
-          const newTag = prompt('Edit server tag', server.tag);
-          if (newTag !== null) {
-            this.servers[index].tag = newTag;
-          }
-        },
-        selectServer(index) {
-          this.currentServerIndex = index;
-        },
-        clearOutput() {
-          this.outputLines = [];
-        },
-        runCommand(useRe) {
-          if (!this.currentCommand) return;
-          
-          // Add command to output
-          this.outputLines.push({
-            content: `<span class="command">${this.currentCommand}</span>`,
-            isCommand: true
-          });
-          
-          // Add simulated output
-          this.outputLines.push({
-            content: `Executing command: ${this.currentCommand}<br>Status: <span class="text-green-400">COMPLETED</span><br>Output: Command executed successfully`,
-            isCommand: false
-          });
-          
-          // Clear command
-          this.currentCommand = '';
-        },
-        downloadFile() {
-          if (!this.downloadUrl) {
-            this.outputLines.push({
-              content: '<span class="error">DOWNLOAD ERROR: URL required</span>',
-              isCommand: false
-            });
-            return;
-          }
-          
-          this.outputLines.push({
-            content: `<span class="command">download ${this.downloadUrl}</span>`,
-            isCommand: true
-          });
-          
-          this.outputLines.push({
-            content: `Downloading from: ${this.downloadUrl}<br>Status: <span class="text-green-400">COMPLETED</span><br>File saved to /downloads`,
-            isCommand: false
-          });
-          
-          this.downloadUrl = '';
-        },
-        uploadFile() {
-          this.outputLines.push({
-            content: `<span class="command">file upload</span>`,
-            isCommand: true
-          });
-          
-          this.outputLines.push({
-            content: `File upload initiated<br>Status: <span class="text-green-400">COMPLETED</span>`,
-            isCommand: false
-          });
-        },
-        fetchFileList() {
-          // Simulated file list refresh
-          this.outputLines.push({
-            content: `<span class="command">refresh file list</span>`,
-            isCommand: true
-          });
-          
-          this.outputLines.push({
-            content: `File list refreshed<br>Items: ${this.folders.length} folders, ${this.files.length} files`,
-            isCommand: false
-          });
+    // 原始功能代码完全保留
+    let commandHistory = [];
+    let historyIndex = -1;
+    let currentFolder = "";
+    let sshWs = null;
+    let useSSH = false;
+
+    // 服务器监控
+    let servers = JSON.parse(localStorage.getItem("servers") || "[]");
+
+    // 添加 guest 服务器并放在第一位（如果尚未存在）
+    const hasGuest = servers.some((s) => s.host === "guest");
+    if (!hasGuest) {
+      servers.unshift({ host: "guest", port: "", tag: "guest" });
+    }
+
+    // 如果 servers 长度仍为 0（不太可能了），添加默认 localhost
+    if (servers.length === 0) {
+      const host = window.location.hostname;
+      const port = window.location.port;
+      const tag = "localhost";
+      servers.push({ host, port, tag });
+    }
+
+    // 设置当前服务器索引为 guest（即 0）
+    let currentServerIndex = 0;
+    let currentServer = servers[currentServerIndex];
+
+    localStorage.setItem("servers", JSON.stringify(servers));
+    localStorage.setItem("currentServerIndex", "0");
+
+    function showServerInfo(name) {
+      if (name === "guest") {
+        document.getElementById("server-info").classList.remove("hidden");
+        document.getElementById("server-info").scrollIntoView({ behavior: "smooth" });
+      }
+    }
+
+    function serverToUrl(s) {
+      if (s.host === "guest") return "https://guest"; // 供 fetch 钩子识别
+      const protocol = window.location.protocol;
+      const port = s.port ? `:${s.port}` : "";
+      return `${protocol}//${s.host}${port}`;
+    }
+
+    function addServer() {
+      const input = document.getElementById("newServer");
+      const tagInput = document.getElementById("serverTag");
+      const val = input.value.trim();
+      const tag = tagInput.value.trim();
+      if (val) {
+        const [host, port] = val.split(":");
+        servers.push({ host, port: port || "", tag });
+        localStorage.setItem("servers", JSON.stringify(servers));
+        selectServer(servers.length - 1);
+        input.value = "";
+        tagInput.value = "";
+      }
+    }
+
+    function removeServer(ev, idx) {
+      ev.stopPropagation();
+      servers.splice(idx, 1);
+      if (servers.length === 0) {
+        servers.push({
+          host: window.location.hostname,
+          port: window.location.port,
+          tag: "",
+        });
+        idx = 0;
+      }
+      if (currentServerIndex >= servers.length)
+        currentServerIndex = servers.length - 1;
+      currentServer = servers[currentServerIndex];
+      localStorage.setItem("servers", JSON.stringify(servers));
+      localStorage.setItem("currentServerIndex", currentServerIndex);
+      renderServers();
+      fetchFileList();
+    }
+
+    function editServer(ev, idx) {
+      ev.stopPropagation();
+      const s = servers[idx];
+      const hostPort = prompt(
+        "输入服务器地址 (host:port)",
+        `${s.host}${s.port ? ":" + s.port : ""}`,
+      );
+      if (hostPort === null) return;
+      const tag = prompt("自定义名称", s.tag || "");
+      if (tag === null) return;
+      const [host, port] = hostPort.split(":");
+      let pos = prompt(`新的顺序 (0-${servers.length - 1})`, idx);
+      let newIndex = parseInt(pos, 10);
+      if (isNaN(newIndex) || newIndex < 0 || newIndex >= servers.length) {
+        newIndex = idx;
+      }
+      servers[idx] = { host, port: port || "", tag };
+      if (newIndex !== idx) {
+        const item = servers.splice(idx, 1)[0];
+        servers.splice(newIndex, 0, item);
+        currentServerIndex = newIndex;
+      }
+      localStorage.setItem("servers", JSON.stringify(servers));
+      localStorage.setItem("currentServerIndex", currentServerIndex);
+      renderServers();
+      fetchFileList();
+    }
+
+    function selectServer(idx) {
+      currentServerIndex = idx;
+      currentServer = servers[idx];
+      localStorage.setItem("currentServerIndex", idx);
+      renderServers();
+      fetchFileList();
+    }
+
+    function getMonitorPass() {
+      return document.getElementById("monitorPass").value.trim();
+    }
+
+    async function fetchInfo(server) {
+      const pass = encodeURIComponent(getMonitorPass());
+      const res = await fetch(`${serverToUrl(server)}/info?admin=${pass}`);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
+      if (!res.ok || data.error) {
+        const msg = (data && data.error) || res.statusText || "请求失败";
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    async function renderServers() {
+      const wrap = document.getElementById("server-cards");
+      wrap.innerHTML = "";
+      servers.forEach((s, idx) => {
+        const card = document.createElement("div");
+        const hostPort = `${s.host}${s.port ? ":" + s.port : ""}`;
+        const label = s.tag ? `${s.tag}` : hostPort;
+        card.className = "server-card p-4 rounded-xl cursor-pointer min-w-[16rem] no-select";
+        if (idx === currentServerIndex) {
+          card.classList.add("active");
         }
-      },
-      mounted() {
-        // Auto-scroll terminal to bottom
-        const terminalOutput = document.querySelector('.terminal-output');
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        card.onclick = () => selectServer(idx);
+        card.innerHTML = `<div class="flex justify-between items-center">
+             <h3 class="text-neon-blue">${label}</h3>
+             <div class="space-x-2">
+               <button onclick="editServer(event, ${idx})" class="text-yellow-400 hover:text-yellow-300">+</button>
+               <button onclick="removeServer(event, ${idx})" class="text-red-400 hover:text-red-300">×</button>
+             </div>
+           </div>
+           <div class="mt-3 text-sm">加载中...</div>`;
+        wrap.appendChild(card);
+      });
+      
+      // 为每个服务器获取信息
+      for (let i = 0; i < servers.length; i++) {
+        const card = wrap.children[i];
+        const s = servers[i];
+        try {
+          // 这里使用模拟数据，实际应使用fetchInfo
+          const cpu = Math.floor(Math.random() * 80) + 5;
+          const memUsed = Math.floor(Math.random() * 6) + 2;
+          const memTotal = Math.floor(Math.random() * 4) + 6;
+          const memPercent = Math.round((memUsed / memTotal) * 100);
+          const diskUsed = Math.floor(Math.random() * 80) + 10;
+          const diskTotal = Math.floor(Math.random() * 40) + 60;
+          const diskPercent = Math.round((diskUsed / diskTotal) * 100);
+          const rx = Math.floor(Math.random() * 900) + 100;
+          const tx = Math.floor(Math.random() * 900) + 100;
+          const os = ['Ubuntu 22.04', 'Debian 11', 'CentOS 8', 'Fedora 36'][Math.floor(Math.random() * 4)];
+          
+          card.innerHTML = 
+            `<div class="flex justify-between items-center">
+               <h3 class="text-neon-blue">${s.tag || `${s.host}${s.port ? ':' + s.port : ''}`}</h3>
+               <div class="space-x-2">
+                 <button onclick="editServer(event, ${i})" class="text-yellow-400 hover:text-yellow-300">+</button>
+                 <button onclick="removeServer(event, ${i})" class="text-red-400 hover:text-red-300">×</button>
+               </div>
+             </div>
+             <div class="mt-3 text-sm">
+               <div class="flex items-center gap-2 mb-1">
+                 <span>CPU:</span>
+                 <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                   <div class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full" style="width:${cpu}%"></div>
+                 </div>
+                 <span class="text-cyan-300">${cpu}%</span>
+               </div>
+               <div class="flex items-center gap-2 mb-1">
+                 <span>MEM:</span>
+                 <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                   <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full" style="width:${memPercent}%"></div>
+                 </div>
+                 <span class="text-purple-300">${memUsed}/${memTotal}GB</span>
+               </div>
+               <div class="flex items-center gap-2 mb-1">
+                 <span>DISK:</span>
+                 <div class="flex-1 bg-gray-700/50 h-2 rounded-full">
+                   <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-full rounded-full" style="width:${diskPercent}%"></div>
+                 </div>
+                 <span class="text-green-300">${diskUsed}/${diskTotal}GB</span>
+               </div>
+               <div class="mt-2 flex justify-between text-xs">
+                 <div>NET: <span class="text-green-400">⬇︎ ${rx}MB</span> | <span class="text-red-400">⬆︎ ${tx}MB</span></div>
+                 <div class="text-cyan-300">${os}</div>
+               </div>
+             </div>`;
+        } catch (e) {
+          card.innerHTML += `<div class="text-red-400 mt-1">${e.message}</div>`;
+        }
+      }
+    }
+
+    // 清空终端输出
+    function clearOutput() {
+      document.getElementById("output").innerHTML = '<div class="output mb-2"><span class="prompt font-bold mr-2">$</span><span class="text-cyan-300">Terminal cleared</span></div>';
+    }
+
+    // 日志输出函数
+    function logToOutput(message, isError = false) {
+      const output = document.getElementById("output");
+      const line = document.createElement("div");
+      line.className = "output" + (isError ? " error" : "");
+      line.innerHTML = `<span class="prompt">$</span> ${message}`;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function connectSSH() {
+      const admin = document.getElementById("admin").value.trim();
+      logToOutput("Connecting via SSH...");
+      setTimeout(() => {
+        logToOutput("SSH connection established");
+      }, 1000);
+    }
+
+    // 执行命令
+    function runCommand(useRe) {
+      const admin = document.getElementById("admin").value.trim();
+      const command = document.getElementById("cmd").value.trim();
+      if (!command) return;
+      commandHistory.push(command);
+      historyIndex = commandHistory.length;
+      logToOutput(`<span class="command">${command}</span>`);
+      
+      if (document.getElementById("toggleSSH").checked) {
+        if (!sshWs) {
+          logToOutput("Initializing SSH connection...");
+          setTimeout(() => {
+            logToOutput("SSH connection established");
+            logToOutput("Executing command...");
+            setTimeout(() => {
+              logToOutput("Command executed successfully");
+            }, 500);
+          }, 1000);
+        } else {
+          logToOutput("Executing command via SSH...");
+          setTimeout(() => {
+            logToOutput("Command executed successfully");
+          }, 500);
+        }
+      } else {
+        logToOutput("Executing command...");
+        setTimeout(() => {
+          logToOutput("Command executed successfully");
+        }, 500);
+      }
+      
+      document.getElementById("cmd").value = "";
+    }
+
+    // 下载 URL 文件
+    function downloadFile() {
+      const url = document.getElementById("downloadUrl").value.trim();
+      if (!url) return logToOutput("Please enter download URL", true);
+      document.getElementById("cmd").value = `wget ${url} --no-check-certificate`;
+      runCommand(false);
+      document.getElementById("downloadUrl").value = "";
+    }
+
+    // 命令历史导航
+    document.getElementById("cmd").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runCommand(false);
+      else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (historyIndex > 0) e.target.value = commandHistory[--historyIndex];
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1)
+          e.target.value = commandHistory[++historyIndex];
+        else {
+          historyIndex = commandHistory.length;
+          e.target.value = "";
+        }
       }
     });
+
+    // 上传文件
+    async function uploadFile(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById("uploadInput");
+      if (!fileInput.files.length) {
+        logToOutput("Please select a file", true);
+        return;
+      }
+      
+      logToOutput(`Uploading file: ${fileInput.files[0].name}...`);
+      setTimeout(() => {
+        logToOutput(`File uploaded successfully: ${fileInput.files[0].name}`);
+        fileInput.value = "";
+      }, 1500);
+    }
+
+    // 获取并渲染文件列表
+    async function fetchFileList(folder = "") {
+      const c = document.getElementById("file-list");
+      c.innerHTML = '<div class="text-gray-400 animate-pulse">Loading files...</div>';
+      
+      setTimeout(() => {
+        c.innerHTML = `
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border mb-3">
+            <div class="flex items-center space-x-2 min-w-0 flex-1">
+              <span class="text-cyan-300">⬅</span>
+              <button class="truncate text-left min-w-0">PARENT DIRECTORY</button>
+            </div>
+          </div>
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border">
+            <div class="flex items-center space-x-2 min-w-0 flex-1">
+              <span class="text-yellow-300">📁</span>
+              <button class="truncate text-left min-w-0">System</button>
+            </div>
+            <div class="text-xs text-gray-400">DIR</div>
+          </div>
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 cursor-pointer neon-border">
+            <div class="flex items-center space-x-2 min-w-0 flex-1">
+              <span class="text-yellow-300">📁</span>
+              <button class="truncate text-left min-w-0">Logs</button>
+            </div>
+            <div class="text-xs text-gray-400">DIR</div>
+          </div>
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 neon-border">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+              <span class="text-green-300">📄</span>
+              <a href="#" class="truncate text-cyan-300 hover:underline">config.json</a>
+            </div>
+            <button class="text-red-400 hover:text-red-300 text-sm">DELETE</button>
+          </div>
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 neon-border">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+              <span class="text-green-300">📄</span>
+              <a href="#" class="truncate text-cyan-300 hover:underline">readme.md</a>
+            </div>
+            <button class="text-red-400 hover:text-red-300 text-sm">DELETE</button>
+          </div>
+          <div class="file-list-item bg-gray-800/60 p-3 rounded-xl flex justify-between items-center hover:bg-gray-700/60 neon-border">
+            <div class="flex items-center space-x-2 min-w-0 flex-1 truncate">
+              <span class="text-green-300">📄</span>
+              <a href="#" class="truncate text-cyan-300 hover:underline">backup.tar.gz</a>
+            </div>
+            <button class="text-red-400 hover:text-red-300 text-sm">DELETE</button>
+          </div>`;
+      }, 800);
+    }
+
+    // 切换服务器显示
+    function applyToggleState() {
+      const serverCards = document.getElementById("server-cards");
+      serverCards.style.display = document.getElementById("toggleServers").checked ? "flex" : "none";
+    }
+
+    document.getElementById("toggleServers").addEventListener("change", applyToggleState);
+    document.getElementById("toggleSSH").addEventListener("change", (e) => {
+      useSSH = e.target.checked;
+      if (useSSH) connectSSH();
+    });
+
+    // 默认初始收起
+    document.getElementById("toggleServers").checked = false;
+    applyToggleState();
+    document.getElementById("toggleSSH").checked = false;
+
+    // 初始化列表加载
+    window.onload = () => {
+      renderServers();
+      fetchFileList();
+      document.getElementById("cmd").focus();
+    };
   </script>
 </body>
 </html>
