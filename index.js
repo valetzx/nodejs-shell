@@ -315,7 +315,7 @@ server.on("upgrade", (req, socket, head) => {
     }
 
     const route = ROUTES[pathname];
-    if (!route || adminParam !== ADMIN_PASSWORD) {
+//    if (!route || adminParam !== ADMIN_PASSWORD) {
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
